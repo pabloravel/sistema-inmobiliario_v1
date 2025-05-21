@@ -1,0 +1,19 @@
+# Python y entorno virtual
+__pycache__/
+*.pyc
+venv/
+.env
+api_key.txt
+
+# Salidas y cachés
+resultados/
+cache_ia35/
+cache_ia/
+
+# Backups y logs
+backups/
+*.log
+*.csv
+
+# Mac
+.DS_Store
