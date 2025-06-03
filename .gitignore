@@ -1,19 +1,59 @@
-# Python y entorno virtual
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
 venv/
-.env
-api_key.txt
+venv312/
+ENV/
 
-# Salidas y cachés
-resultados/
-cache_ia35/
-cache_ia/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Backups y logs
-backups/
-*.log
-*.csv
-
-# Mac
+# Archivos de sistema
 .DS_Store
+.localstorage/
+
+# Archivos de datos y resultados
+*.json
+resultados/
+datos/
+modelos/
+*.pkl
+
+# Logs
+*.log
+debug.log
+
+# Archivos temporales
+*.bak
+*.backup
+*_backup*
+*.tmp
+
+# Archivos específicos del proyecto que no deben versionarse
+fb_state.json
+propiedades.json
+propiedades_estructuradas.json
+propiedades_invalidas.json
