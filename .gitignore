@@ -52,6 +52,10 @@ debug.log
 *_backup*
 *.tmp
 
+# Variables de entorno
+.env
+!.env.example
+
 # Archivos específicos del proyecto que no deben versionarse
 fb_state.json
 propiedades.json
