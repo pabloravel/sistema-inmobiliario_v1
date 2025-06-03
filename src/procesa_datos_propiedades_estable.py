@@ -161,9 +161,6 @@ def limpiar_descripcion(texto: str) -> str:
     if not texto:
         return ""
     
-    # Eliminar "Notificaciones." al inicio del texto
-    texto = re.sub(r'^Notificaciones\.\s*', '', texto)
-    
     # Convertir a minúsculas y eliminar espacios extras
     texto = texto.lower().strip()
     texto = re.sub(r'\s+', ' ', texto)
@@ -264,95 +261,137 @@ def extraer_tipo_propiedad(texto):
         
     texto = normalizar_texto(texto)
     
-    # Sistema de puntuación para cada tipo
-    puntuacion = {
-        "departamento": 0,
-        "terreno": 0,
-        "casa en condominio": 0,
-        "casa sola": 0
+    # Separar título y descripción
+    titulo = texto.split('\n')[0] if '\n' in texto else texto
+    descripcion = '\n'.join(texto.split('\n')[1:]) if '\n' in texto else ''
+    
+    # Patrones de mención explícita por tipo
+    menciones_explicitas = {
+        'Casa': [
+            r'(?:hermosa|bonita|preciosa|bella|linda|nueva|amplia|moderna|vendo|rento)\s+casa',
+            r'casa(?:\s+(?:sola|nueva|individual|habitacional|residencial|unifamiliar))?(?:\s+en\s+(?:venta|renta))?',
+            r'casa\s+(?:en|con|de|nueva)',
+            r'residencia(?:\s+(?:nueva|moderna|amplia))?',
+            r'chalet',
+            r'vivienda(?:\s+unifamiliar)?'
+        ],
+        'Departamento': [
+            r'(?:hermoso|bonito|precioso|bello|lindo|nuevo|amplio|moderno|vendo|rento)\s+departamento',
+            r'departamento(?:\s+(?:nuevo|tipo|estudio))?(?:\s+en\s+(?:venta|renta))?',
+            r'depto(?:\.|\s+)',
+            r'dpto(?:\.|\s+)',
+            r'apartamento',
+            r'apto(?:\.|\s+)',
+            r'pent\s*house',
+            r'penthouse',
+            r'loft'
+        ],
+        'Terreno': [
+            r'(?:hermoso|bonito|precioso|bello|lindo|nuevo|amplio|vendo|rento)\s+terreno',
+            r'terreno(?:s)?(?:\s+(?:plano|urbano|residencial))?(?:\s+en\s+(?:venta|renta))?',
+            r'lote(?:s)?(?:\s+(?:residencial|urbano|comercial))?',
+            r'predio(?:\s+(?:urbano|residencial))?',
+            r'parcela',
+            r'solar(?:\s+urbano)?',
+            r'remate\s+de\s+terreno',
+            r'hectareas?(?:\s+de\s+terreno)?',
+            r'has?(?:\.|\s+)(?:de\s+terreno)?',
+            r'm2\s+(?:de\s+)?terreno',
+            r'metros?\s+(?:cuadrados?\s+)?(?:de\s+)?terreno'
+        ],
+        'Local': [
+            r'(?:hermoso|bonito|precioso|bello|lindo|nuevo|amplio|moderno|vendo|rento)\s+local',
+            r'local(?:\s+(?:comercial|nuevo))?(?:\s+en\s+(?:venta|renta))?',
+            r'bodega(?:\s+comercial)?',
+            r'nave(?:\s+industrial)?',
+            r'oficina(?:\s+comercial)?',
+            r'consultorio',
+            r'despacho',
+            r'plaza(?:\s+comercial)?'
+        ]
     }
     
-    # Detectar departamentos - Aumentamos el peso de las características clave
-    caracteristicas_depto = [
-        (r'\b(?:departamento|depto|dpto|apartamento|apto)\b', 5),  # Aumentado de 3 a 5
-        (r'\b(?:departamento|depto|dpto|apartamento|apto)\s+(?:en|con)\s+(?:la\s+)?(?:planta|piso|nivel)', 6),  # Nuevo patrón con más peso
-        (r'\b(?:\d+(?:er|do|ro|to|vo|°)?(?:\s+piso|planta|nivel))', 4),  # Aumentado de 2 a 4
-        (r'\b(?:piso|planta|nivel)\s+\d+', 4),  # Aumentado de 2 a 4
-        (r'\bedificio\b', 3),  # Aumentado de 1 a 3
-        (r'\btorre\b', 3),  # Aumentado de 1 a 3
-        (r'\belevador\b', 3),  # Aumentado de 2 a 3
-        (r'\bpenthouse\b', 4),  # Aumentado de 3 a 4
-        (r'\bpent\s*house\b', 4),  # Aumentado de 3 a 4
-        (r'\bunidad\s+habitacional\b', 3),  # Nuevo patrón
-        (r'\bcondominio\s+vertical\b', 3),  # Nuevo patrón
-        (r'\bplanta\s+(?:alta|superior)\b', 3),  # Nuevo patrón
-        (r'\bascensor\b', 3)  # Nuevo patrón
-    ]
-    
-    # Detectar terrenos
-    caracteristicas_terreno = [
-        (r'\bterreno\b(?!\s+con\s+casa)', 3),
-        (r'\blote\b(?!\s+de\s+casa)', 2),
-        (r'\bpredio\b(?!\s+con\s+casa)', 2),
-        (r'\bm2\s+de\s+terreno\b', 1),
-        (r'\bterritorio\b', 1)
-    ]
-    
-    # Detectar casas en condominio
-    caracteristicas_casa_condominio = [
-        (r'\bcasa\s+(?:en|dentro\s+de)\s+(?:un\s+)?condominio\b', 3),
-        (r'\bcondominio\s+horizontal\b', 2),
-        (r'\bfraccionamiento\s+privado\b', 2),
-        (r'\bprivada\b', 1),
-        (r'\bvigilancia\s+24\b', 1),
-        (r'\bacceso\s+controlado\b', 1),
-        (r'\bcasa\s+club\b', 2)
-    ]
-    
-    # Detectar casas solas
-    caracteristicas_casa_sola = [
-        (r'\bcasa\s+sola\b', 3),
-        (r'\bcasa\s+independiente\b', 2),
-        (r'\bcasa\s+individual\b', 2),
-        (r'\bcasa\s+(?:con|en)\s+terreno\s+propio\b', 2),
-        (r'\bcasa\s+particular\b', 1)
-    ]
-    
-    # Aplicar puntuación
-    for patron, peso in caracteristicas_depto:
-        if re.search(patron, texto):
-            puntuacion["departamento"] += peso
+    # Buscar menciones explícitas en la descripción primero
+    for tipo, patrones in menciones_explicitas.items():
+        # Dar prioridad a la descripción
+        if descripcion and any(re.search(patron, descripcion, re.IGNORECASE) for patron in patrones):
+            return tipo
             
-    for patron, peso in caracteristicas_terreno:
-        if re.search(patron, texto):
-            puntuacion["terreno"] += peso
+    # Si no hay mención explícita en la descripción, buscar en el título
+    for tipo, patrones in menciones_explicitas.items():
+        if any(re.search(patron, titulo, re.IGNORECASE) for patron in patrones):
+            return tipo
             
-    for patron, peso in caracteristicas_casa_condominio:
-        if re.search(patron, texto):
-            puntuacion["casa en condominio"] += peso
-            
-    for patron, peso in caracteristicas_casa_sola:
-        if re.search(patron, texto):
-            puntuacion["casa sola"] += peso
+    # Si aún no hay match, buscar características físicas
+    caracteristicas = {
+        'Casa': [
+            r'\d+\s*(?:recamaras?|rec(?:s|\.|amaras?)?|habitaciones?|cuartos?|dormitorios?)',
+            r'(?:ba[ñn]os?|wc|sanitarios?)',
+            r'cocina\s+(?:integral|equipada)',
+            r'sala\s*(?:y|,)?\s*comedor',
+            r'cochera|garage|estacionamiento',
+            r'planta\s+(?:alta|baja)',
+            r'jardin|patio',
+            r'terraza|balcon'
+        ],
+        'Departamento': [
+            r'edificio',
+            r'torre',
+            r'nivel\s+\d+',
+            r'piso\s+\d+',
+            r'\d+(?:er|do|ro|to|vo|°)?\s+piso',
+            r'elevador',
+            r'ascensor',
+            r'condominio\s+vertical',
+            r'desarrollo\s+vertical'
+        ],
+        'Terreno': [
+            r'(?:terreno|lote)\s+(?:\d+\s*)?(?:x|por)\s*\d+',
+            r'(?:uso\s+de\s+)?suelo\s+(?:habitacional|comercial|mixto)',
+            r'escrituras?\s+(?:en\s+)?regla',
+            r'ejidal(?:es)?',
+            r'colindancias',
+            r'medidas\s+y\s+colindancias',
+            r'poligonal',
+            r'topografia'
+        ],
+        'Local': [
+            r'cortina\s+metalica',
+            r'zona\s+comercial',
+            r'uso\s+comercial',
+            r'local(?:es)?\s+(?:adjuntos?|contiguos?)',
+            r'area\s+de\s+exhibicion',
+            r'vitrina|aparador',
+            r'almacen|bodega'
+        ]
+    }
     
-    # Penalización por términos contradictorios
-    if re.search(r'\bcasa\b', texto) and puntuacion["departamento"] > 0:
-        # Si menciona "casa" pero tiene características fuertes de departamento,
-        # mantenemos la puntuación de departamento
-        if puntuacion["departamento"] < 4:  # Si las características de depto no son muy fuertes
-            puntuacion["departamento"] = 0
+    # Contar características de cada tipo
+    puntos = {tipo: 0 for tipo in caracteristicas.keys()}
     
-    # Obtener el tipo con mayor puntuación
-    tipo_max = max(puntuacion.items(), key=lambda x: x[1])
+    # Dar más peso a las características en la descripción
+    for tipo, patrones in caracteristicas.items():
+        if descripcion:
+            puntos[tipo] += 2 * sum(1 for patron in patrones if re.search(patron, descripcion, re.IGNORECASE))
+        puntos[tipo] += sum(1 for patron in patrones if re.search(patron, titulo, re.IGNORECASE))
     
-    # Solo retornar un tipo si tiene puntuación mayor a 0
-    if tipo_max[1] > 0:
-        return tipo_max[0]
+    # Si hay características claras de un tipo, usarlas
+    max_puntos = max(puntos.values())
+    if max_puntos > 0:
+        for tipo, score in puntos.items():
+            if score == max_puntos:
+                return tipo
     
-    # Si no se detectó ningún tipo específico pero menciona "casa"
-    if re.search(r'\bcasa\b', texto) and not any(puntuacion.values()):
-        return "casa sola"
-        
+    # Si no hay características claras, intentar inferir por el contexto
+    if re.search(r'(?:casa|vivienda|hogar|residencia)(?:\s+en\s+(?:venta|renta))?', texto, re.IGNORECASE):
+        return 'Casa'
+    elif re.search(r'(?:departamento|depto|dpto|apartamento|apto)(?:\s+en\s+(?:venta|renta))?', texto, re.IGNORECASE):
+        return 'Departamento'
+    elif re.search(r'(?:terreno|lote|predio|solar)(?:\s+en\s+(?:venta|renta))?', texto, re.IGNORECASE):
+        return 'Terreno'
+    elif re.search(r'(?:local|bodega|nave|oficina|consultorio)(?:\s+en\s+(?:venta|renta))?', texto, re.IGNORECASE):
+        return 'Local'
+    
     return None
 
 def extraer_amenidades(texto):
@@ -410,18 +449,14 @@ def extraer_amenidades(texto):
         amenidades["areas_comunes"]["tipos"] = tipos_encontrados
     
     # Detectar amenidades adicionales
-    adicionales = {
-        "calentador solar": ["calentador solar", "paneles solares"],
-        "cuarto de servicio": ["cuarto de servicio", "habitación de servicio"],
-        "vigilancia": ["vigilancia", "seguridad 24", "camaras", "cámaras"],
-        "cisterna": ["cisterna", "aljibe"],
-        "bodega": ["bodega", "storage"],
-        "aire acondicionado": ["aire acondicionado", "a/c", "minisplit"]
-    }
-    
-    for amenidad, palabras_clave in adicionales.items():
-        if any(palabra in texto for palabra in palabras_clave):
-            amenidades["adicionales"].append(amenidad)
+    adicionales = [
+        "calentador solar", "calefacción", "calefaccion",
+        "sistema de seguridad", "cámaras", "camaras",
+        "bodega", "almacén", "almacen", "cuarto de servicio"
+    ]
+    for adicional in adicionales:
+        if adicional in texto:
+            amenidades["adicionales"].append(adicional)
     
     return amenidades
 
@@ -499,50 +534,67 @@ def extraer_ubicacion_detallada(texto, ubicacion_original):
         r"a (?:la )?altura de ([^\.]+)"
     ]
     
-    texto_busqueda = texto.lower()
-    if ubicacion_original and isinstance(ubicacion_original, dict):
-        texto_busqueda += " " + ubicacion_original.get("direccion_completa", "").lower()
-        texto_busqueda += " " + ubicacion_original.get("texto_original", "").lower()
+    # Primero buscar ciudad en la descripción
+    ciudades_conocidas = {
+        "cuernavaca": "Cuernavaca",
+        "temixco": "Temixco",
+        "jiutepec": "Jiutepec",
+        "zapata": "Emiliano Zapata",
+        "yautepec": "Yautepec",
+        "xochitepec": "Xochitepec",
+        "tepoztlan": "Tepoztlán",
+        "emiliano zapata": "Emiliano Zapata"
+    }
     
-    # Buscar colonia primero en el texto original
-    colonia = None
-    for col, ciudad in colonias_ciudades.items():
-        if col.lower() in texto_busqueda:
-            colonia = col
-            ubicacion["ciudad"] = ciudad
+    texto_lower = texto.lower()
+    for ciudad_key, ciudad_nombre in ciudades_conocidas.items():
+        if ciudad_key in texto_lower:
+            ubicacion["ciudad"] = ciudad_nombre
             break
     
-    # Si no se encontró colonia, buscar en la ubicación original
-    if not colonia and ubicacion_original and isinstance(ubicacion_original, dict):
-        colonia_orig = ubicacion_original.get("colonia")
-        if colonia_orig and colonia_orig in colonias_ciudades:
-            colonia = colonia_orig
-            ubicacion["ciudad"] = colonias_ciudades[colonia_orig]
-    
-    # Buscar referencias
-    for patron in patrones_ref:
-        if matches := re.finditer(patron, texto_busqueda):
-            for match in matches:
-                ref = match.group(1).strip()
-                if ref and len(ref) > 3 and not any(r.lower() in ref.lower() for r in referencias):
-                    referencias.append(ref.strip('., ').title())
-    
-    # Determinar ciudad si aún no se ha encontrado
-    if "ciudad" not in ubicacion:
-        ciudades_conocidas = {
-            "cuernavaca": "Cuernavaca",
-            "temixco": "Temixco",
-            "jiutepec": "Jiutepec",
-            "zapata": "Emiliano Zapata",
-            "yautepec": "Yautepec",
-            "xochitepec": "Xochitepec",
-            "tepoztlan": "Tepoztlán",
-            "emiliano zapata": "Emiliano Zapata"
-        }
+    # Si no se encontró ciudad en la descripción, buscar en direccion_completa
+    if "ciudad" not in ubicacion and ubicacion_original and isinstance(ubicacion_original, dict):
+        dir_completa = ubicacion_original.get("direccion_completa", "").lower()
         for ciudad_key, ciudad_nombre in ciudades_conocidas.items():
-            if ciudad_key in texto_busqueda:
+            if ciudad_key in dir_completa:
                 ubicacion["ciudad"] = ciudad_nombre
                 break
+    
+    # Buscar colonia primero en la descripción
+    colonia = None
+    for col, ciudad in colonias_ciudades.items():
+        if col.lower() in texto_lower:
+            colonia = col
+            # Si no tenemos ciudad aún, usar la ciudad asociada a la colonia
+            if "ciudad" not in ubicacion:
+                ubicacion["ciudad"] = ciudad
+            break
+    
+    # Si no se encontró colonia en la descripción, buscar en direccion_completa
+    if not colonia and ubicacion_original and isinstance(ubicacion_original, dict):
+        dir_completa = ubicacion_original.get("direccion_completa", "").lower()
+        for col, ciudad in colonias_ciudades.items():
+            if col.lower() in dir_completa:
+                colonia = col
+                # Si no tenemos ciudad aún, usar la ciudad asociada a la colonia
+                if "ciudad" not in ubicacion:
+                    ubicacion["ciudad"] = ciudad
+                break
+    
+    # Buscar referencias en ambos textos
+    textos_busqueda = [texto_lower]
+    if ubicacion_original and isinstance(ubicacion_original, dict):
+        dir_completa = ubicacion_original.get("direccion_completa", "").lower()
+        if dir_completa:
+            textos_busqueda.append(dir_completa)
+    
+    for texto_busqueda in textos_busqueda:
+        for patron in patrones_ref:
+            if matches := re.finditer(patron, texto_busqueda):
+                for match in matches:
+                    ref = match.group(1).strip()
+                    if ref and len(ref) > 3 and not any(r.lower() in ref.lower() for r in referencias):
+                        referencias.append(ref.strip('., ').title())
     
     # Actualizar ubicación
     ubicacion.update({
@@ -633,6 +685,7 @@ def extraer_precio(texto: str) -> Dict:
             - es_valido: bool indicando si se pudo procesar el precio
             - confianza: float entre 0 y 1
             - mensaje: str con detalles o error
+            - formato: str con el precio formateado para mostrar
     """
     if not texto:
         return {
@@ -640,7 +693,8 @@ def extraer_precio(texto: str) -> Dict:
             "valor": None,
             "es_valido": False,
             "confianza": 0.0,
-            "mensaje": "Texto vacío"
+            "mensaje": "Texto vacío",
+            "formato": "Precio no disponible"
         }
     
     # Si el texto es un diccionario, buscar el precio en el campo precio
@@ -649,12 +703,14 @@ def extraer_precio(texto: str) -> Dict:
             # Si tiene texto, usarlo como valor principal
             if "texto" in texto:
                 valor_normalizado = procesar_numero_mexicano(texto["texto"])
+                formato = f"${valor_normalizado:,.0f}" if valor_normalizado is not None else "Precio no disponible"
                 return {
                     "texto": texto["texto"],
                     "valor": valor_normalizado,
                     "es_valido": valor_normalizado is not None,
                     "confianza": 1.0 if valor_normalizado is not None else 0.0,
-                    "mensaje": ""
+                    "mensaje": "",
+                    "formato": formato
                 }
             # Si tiene valor, usarlo directamente
             elif "valor" in texto:
@@ -665,16 +721,19 @@ def extraer_precio(texto: str) -> Dict:
                         "valor": float(valor),
                         "es_valido": True,
                         "confianza": 1.0,
-                        "mensaje": ""
+                        "mensaje": "",
+                        "formato": f"${float(valor):,.0f}"
                     }
                 else:
                     valor_normalizado = procesar_numero_mexicano(str(valor))
+                    formato = f"${valor_normalizado:,.0f}" if valor_normalizado is not None else "Precio no disponible"
                     return {
                         "texto": str(valor),
                         "valor": valor_normalizado,
                         "es_valido": valor_normalizado is not None,
                         "confianza": 1.0 if valor_normalizado is not None else 0.0,
-                        "mensaje": ""
+                        "mensaje": "",
+                        "formato": formato
                     }
         except Exception as e:
             return {
@@ -682,18 +741,21 @@ def extraer_precio(texto: str) -> Dict:
                 "valor": None,
                 "es_valido": False,
                 "confianza": 0.0,
-                "mensaje": f"Error procesando precio: {str(e)}"
+                "mensaje": f"Error procesando precio: {str(e)}",
+                "formato": "Precio no disponible"
             }
     
     # Si el texto es un string, intentar extraer y normalizar el precio
     if isinstance(texto, str):
         valor_normalizado = procesar_numero_mexicano(texto)
+        formato = f"${valor_normalizado:,.0f}" if valor_normalizado is not None else "Precio no disponible"
         return {
             "texto": texto,
             "valor": valor_normalizado,
             "es_valido": valor_normalizado is not None,
             "confianza": 1.0 if valor_normalizado is not None else 0.0,
-            "mensaje": ""
+            "mensaje": "",
+            "formato": formato
         }
     
     return {
@@ -701,7 +763,8 @@ def extraer_precio(texto: str) -> Dict:
         "valor": None,
         "es_valido": False,
         "confianza": 0.0,
-        "mensaje": "Formato no reconocido"
+        "mensaje": "Formato no reconocido",
+        "formato": "Precio no disponible"
     }
 
 def extraer_recamaras_y_banos(texto):
@@ -811,76 +874,93 @@ def extraer_recamaras_y_banos(texto):
     
     return resultado
 
-def extraer_niveles(texto):
-    """
-    Extrae el número de niveles de una propiedad.
-    Retorna un diccionario con el número de niveles y si tiene planta alta.
-    """
-    if not texto:
-        return {"niveles": None, "tiene_planta_alta": None}
-        
+def extraer_niveles(texto, tipo_propiedad=None):
+    """Extrae el número de niveles con validación mejorada."""
     texto = texto.lower()
     
-    # Patrones que indican explícitamente dos o más niveles
-    patrones_multinivel = [
-        r"\b(?:dos|2)\s*niveles\b",
-        r"\b(?:dos|2)\s*plantas\b",
-        r"\b(?:dos|2)\s*pisos\b",
-        r"\bsegundo\s*piso\b",
-        r"\bplanta\s*alta\b",
-        r"\bplanta\s*baja\s*y\s*alta\b",
-        r"\bpb\s*y\s*pa\b",
-        r"\bpb\s*y\s*planta\s*alta\b",
-        r"\b(?:tres|3)\s*niveles\b",
-        r"\b(?:tres|3)\s*plantas\b",
-        r"\b(?:tres|3)\s*pisos\b"
+    # Si es un departamento, no puede ser de un nivel
+    es_departamento = tipo_propiedad == "departamento" or any(frase in texto for frase in [
+        "departamento", "depto", "condominio vertical",
+        "edificio", "torre"
+    ])
+    
+    # Detectar menciones de recámaras en planta baja
+    tiene_recamara_pb = any(frase in texto for frase in [
+        "recamara en planta baja", "recámara en planta baja",
+        "habitacion en planta baja", "habitación en planta baja",
+        "dormitorio en planta baja"
+    ])
+    
+    # Detectar si es de un nivel explícitamente
+    es_un_nivel = not es_departamento and any(frase in texto for frase in [
+        "un nivel", "una planta", "planta baja solamente",
+        "sin escaleras", "todo en un nivel",
+        "todo en planta baja", "casa en un nivel",
+        "casa de un nivel", "1 nivel", "un piso solamente",
+        "casa en planta baja", "todo en pb",
+        "solo planta baja", "únicamente planta baja"
+    ])
+    
+    # Detectar si tiene opción a crecer
+    opcion_crecer = any(frase in texto for frase in [
+        "opción de crecimiento", "opcion de crecimiento",
+        "posibilidad de crecer", "puede crecer",
+        "con opción a segundo piso", "con opcion a segundo piso",
+        "se puede construir arriba", "preparada para segundo piso",
+        "preparado para segundo piso", "con preparación para segundo piso",
+        "con preparacion para segundo piso"
+    ])
+    
+    # Detectar si tiene planta alta o segundo piso de manera más precisa
+    tiene_planta_alta = any(frase in texto for frase in [
+        "planta alta", "segundo piso", "2do piso",
+        "segunda planta", "piso superior", "planta superior",
+        "nivel superior", "dos niveles", "2 niveles",
+        "segundo nivel", "2do nivel", 
+        "recamaras en planta alta", "recámaras en planta alta",
+        "habitaciones en planta alta", "dormitorios en planta alta",
+        "escaleras interiores", "escaleras a segundo piso",
+        "escalera a planta alta"
+    ])
+    
+    # Patrones para números específicos de niveles
+    patrones_niveles = [
+        r"(\d+)\s*(?:niveles?|pisos?|plantas?)",
+        r"(?:de|con)\s*(\d+)\s*(?:niveles?|pisos?|plantas?)",
+        r"(?:niveles?|pisos?|plantas?)\s*:\s*(\d+)",
+        r"(?:casa|propiedad)\s*(?:de|con)\s*(\d+)\s*(?:niveles?|pisos?|plantas?)",
+        r"(\d+)\s*(?:niv\.?|p\.?b\.?\s*\+\s*p\.?a\.?)"
     ]
     
-    # Patrones que sugieren múltiples niveles
-    patrones_sugerentes = [
-        r"\brecamara[s]?\s*(?:en\s*)?(?:la\s*)?planta\s*alta\b",
-        r"\brecamara[s]?\s*(?:en\s*)?(?:el\s*)?segundo\s*piso\b",
-        r"\bhabitacion(?:es)?\s*(?:en\s*)?(?:la\s*)?planta\s*alta\b",
-        r"\bcuarto[s]?\s*(?:en\s*)?(?:la\s*)?planta\s*alta\b",
-        r"\barriba\s*(?:tiene|hay|cuenta\s*con)\s*(?:una|dos|tres|[1-3])\s*recamara\b",
-        r"\bescalera[s]?\b",
-        r"\bplanta\s*baja\s*[^.]*(?:y|con)\s*[^.]*(?:planta\s*alta|segundo\s*piso)\b"
-    ]
+    niveles = None
     
-    # Patrones que indican explícitamente un nivel
-    patrones_un_nivel = [
-        r"\bun\s*nivel\b",
-        r"\buna\s*planta\b",
-        r"\btodo\s*en\s*(?:un\s*nivel|planta\s*baja)\b",
-        r"\bcasa\s*(?:de\s*)?un\s*nivel\b",
-        r"\bsin\s*escaleras\b",
-        r"\btodo\s*en\s*planta\s*baja\b"
-    ]
+    # Buscar número específico de niveles
+    for patron in patrones_niveles:
+        if match := re.search(patron, texto):
+            try:
+                valor = int(match.group(1))
+                if 1 <= valor <= 4:  # Validación de rango lógico
+                    niveles = valor
+                    break
+            except ValueError:
+                continue
     
-    # Primero verificar patrones explícitos de múltiples niveles
-    for patron in patrones_multinivel:
-        if re.search(patron, texto):
-            if "tres" in patron or "3" in patron:
-                return {"niveles": 3, "tiene_planta_alta": True}
-            return {"niveles": 2, "tiene_planta_alta": True}
+    # Si no se encontró un número específico, inferir por otras menciones
+    if niveles is None:
+        if es_un_nivel and not tiene_planta_alta and not es_departamento:
+            niveles = 1
+        elif tiene_planta_alta:
+            niveles = 2
     
-    # Luego verificar patrones sugerentes
-    for patron in patrones_sugerentes:
-        if re.search(patron, texto):
-            return {"niveles": 2, "tiene_planta_alta": True}
-    
-    # Finalmente verificar patrones de un nivel
-    for patron in patrones_un_nivel:
-        if re.search(patron, texto):
-            # Verificar que no haya indicadores de múltiples niveles
-            tiene_indicadores_multinivel = any(
-                re.search(p, texto) for p in patrones_multinivel + patrones_sugerentes
-            )
-            if not tiene_indicadores_multinivel:
-                return {"niveles": 1, "tiene_planta_alta": False}
-    
-    # Si no encontramos nada claro, retornamos None
-    return {"niveles": None, "tiene_planta_alta": None}
+    # Si menciona recámara en planta baja pero no menciona explícitamente otros niveles,
+    # no asumimos automáticamente que tiene más niveles
+    return {
+        "niveles": niveles,
+        "un_nivel": (niveles == 1 or es_un_nivel) and not tiene_planta_alta and not es_departamento,
+        "tiene_planta_alta": tiene_planta_alta,
+        "opcion_crecer": opcion_crecer,
+        "es_departamento": es_departamento
+    }
 
 def extraer_estacionamientos(texto):
     """Extrae el número de estacionamientos con validación mejorada."""
@@ -1141,26 +1221,18 @@ def extraer_caracteristicas_detalladas(texto, caracteristicas_orig=None):
             caract["medio_bano"] = rec_banos["medio_bano"]
     
     # Extraer niveles si no existen
-    if caract["niveles"] is None:
+    if caract["niveles"] is None or not caract["un_nivel"]:
         info_niveles = extraer_niveles(texto)
-        caract["niveles"] = info_niveles["niveles"]
-        caract["un_nivel"] = caract["niveles"] == 1 if caract["niveles"] is not None else False
+        if caract["niveles"] is None:
+            caract["niveles"] = info_niveles["niveles"]
+        caract["un_nivel"] = info_niveles["un_nivel"]
+        caract["opcion_crecer"] = info_niveles["opcion_crecer"]
         
         # Si se menciona planta alta, no puede ser de un nivel
         if info_niveles["tiene_planta_alta"]:
             caract["un_nivel"] = False
             if caract["niveles"] is None or caract["niveles"] < 2:
                 caract["niveles"] = 2
-        
-        # Detectar opción de crecimiento
-        caract["opcion_crecer"] = any(frase in texto.lower() for frase in [
-            "opcion de crecimiento", "posibilidad de crecimiento",
-            "oportunidad de crecimiento", "se puede ampliar",
-            "espacio para crecer", "espacio para ampliar",
-            "preparada para segundo piso", "preparada para planta alta",
-            "lista para segundo piso", "lista para planta alta",
-            "preparacion para segundo piso", "preparacion para planta alta"
-        ])
     
     # Detectar recámara en planta baja
     if not caract["recamara_planta_baja"]:
@@ -1435,11 +1507,7 @@ def extraer_tipo_operacion(texto, precio=None):
         r'\b(?:venta|vendo|vendemos|se\s+vende)\b',
         r'\ben\s+venta\b',
         r'\bprecio\s+de\s+venta\b',
-        r'\bpropiedad\s+(?:en|de)\s+venta\b',
-        r'\bremato\b',
-        r'\boportunidad\b',
-        r'\binversion\b',
-        r'\bultimos\s+lotes\b'
+        r'\bpropiedad\s+(?:en|de)\s+venta\b'
     ]
     
     for patron in patrones_venta:
@@ -1453,26 +1521,16 @@ def extraer_tipo_operacion(texto, precio=None):
         r'\bprecio\s+de\s+renta\b',
         r'\bpropiedad\s+(?:en|de)\s+renta\b',
         r'\barrendamiento\b',
-        r'\balquiler\b',
-        r'\bmensual(?:idad)?\b',
-        r'\bdeposito\b'
+        r'\balquiler\b'
     ]
     
     for patron in patrones_renta:
         if re.search(patron, texto):
             return "renta"
             
-    # Lógica basada en precio
-    if precio:
-        # Si el precio es muy alto, probablemente es venta
-        if precio > 1000000:  # Más de 1 millón
-            return "venta"
-        # Si el precio es moderadamente alto y no hay indicadores claros de renta
-        elif precio > 300000 and not any(re.search(patron, texto) for patron in patrones_renta):
-            return "venta"
-        # Si el precio es bajo y hay palabras como "mes" o "mensual"
-        elif precio < 50000 and re.search(r'\b(?:mes|mensual|mensualidad)\b', texto):
-            return "renta"
+    # Si el precio es mayor a $300,000, asumimos que es venta
+    if precio and precio > 300000:
+        return "venta"
     
     return None
 
@@ -1622,19 +1680,6 @@ def procesar_datos_crudos(archivo_entrada: str, archivo_salida: str) -> None:
             }
         }
         
-        # Inicializar estructura para propiedades descartadas
-        propiedades_descartadas = {
-            "fecha_procesamiento": datetime.now().isoformat(),
-            "total_descartadas": 0,
-            "propiedades": [],
-            "estadisticas": {
-                "motivos": defaultdict(int),
-                "palabras_clave_detectadas": defaultdict(int)
-            }
-        }
-        
-        logger.info(f"Procesando {len(datos_crudos)} propiedades...")
-        
         # Procesar cada propiedad
         for id_propiedad, datos in datos_crudos.items():
             try:
@@ -1664,50 +1709,33 @@ def procesar_datos_crudos(archivo_entrada: str, archivo_salida: str) -> None:
                     motivo = "Publicación no relacionada con propiedades inmobiliarias"
                     motivos_invalidez.append(motivo)
                     propiedades_estructuradas["estadisticas"]["motivos_invalidez"]["no_inmobiliaria"] += 1
-                    
-                    # Guardar propiedad descartada con información adicional
-                    propiedad_descartada = {
-                        "id": id_propiedad,
-                        "link": str(datos.get("link", "") or datos.get("url", "")) if isinstance(datos, dict) else "",
-                        "titulo": titulo,
-                        "descripcion": descripcion,
-                        "motivo": motivo,
-                        "fecha_descarte": datetime.now().isoformat(),
-                        "datos_originales": datos  # Guardar datos originales completos
-                    }
-                    
-                    # Detectar palabras clave que causaron el descarte
-                    texto_completo = (titulo + " " + descripcion).lower()
-                    palabras_clave = [
-                        "celular", "auto", "moto", "ropa", "zapatos", "juguetes",
-                        "computadora", "laptop", "tablet", "electrodomestico",
-                        "mueble", "sillon", "cama", "colchon",
-                        "refrigerador", "lavadora", "secadora", "estufa",
-                        "herramienta", "maquinaria", "camion", "trailer"
-                    ]
-                    
-                    palabras_detectadas = []
-                    for palabra in palabras_clave:
-                        if palabra in texto_completo:
-                            palabras_detectadas.append(palabra)
-                            propiedades_descartadas["estadisticas"]["palabras_clave_detectadas"][palabra] += 1
-                    
-                    propiedad_descartada["palabras_clave_detectadas"] = palabras_detectadas
-                    propiedades_descartadas["propiedades"].append(propiedad_descartada)
-                    propiedades_descartadas["total_descartadas"] += 1
-                    propiedades_descartadas["estadisticas"]["motivos"][motivo] += 1
                     continue
                 
                 # Extraer precio
                 precio_info = None
                 if isinstance(datos, dict):
                     if "precio" in datos:
-                        if isinstance(datos["precio"], str):
-                            precio_info = {"valor": datos["precio"], "moneda": "MXN"}
-                        elif isinstance(datos["precio"], dict):
-                            precio_info = datos["precio"]
+                        precio_info = datos["precio"]
                     elif "precios" in datos:
-                        precio_info = {"valor": datos["precios"], "moneda": "MXN"}
+                        precio_info = datos["precios"]
+                    elif "caracteristicas" in datos and isinstance(datos["caracteristicas"], dict):
+                        precio_info = datos["caracteristicas"].get("precio")
+                
+                # Si el precio es un string o número, convertirlo a diccionario
+                if isinstance(precio_info, (str, int, float)):
+                    precio_info = {"valor": str(precio_info), "moneda": "MXN"}
+                
+                # Si no hay precio, intentar extraerlo de la descripción
+                if not precio_info:
+                    patrones_precio = [
+                        r'\$\s*[\d,.]+\s*(?:mil|millones?)?',
+                        r'(?:precio|costo|valor):\s*\$?\s*[\d,.]+\s*(?:mil|millones?)?',
+                        r'[\d,.]+\s*(?:mil|millones?)\s*(?:de)?\s*pesos'
+                    ]
+                    for patron in patrones_precio:
+                        if match := re.search(patron, descripcion, re.IGNORECASE):
+                            precio_info = {"valor": match.group(0), "moneda": "MXN"}
+                            break
                 
                 # Extraer tipo de propiedad
                 tipo_prop = None
@@ -1784,10 +1812,9 @@ def procesar_datos_crudos(archivo_entrada: str, archivo_salida: str) -> None:
                     "fecha_procesamiento": datetime.now().isoformat(),
                     "es_valida": es_valida,
                     "motivos_invalidez": motivos_invalidez,
-                    "datos_originales": {
-                        **datos,  # Mantener todos los datos originales
-                        "imagenes": datos.get("imagenes", []) if isinstance(datos, dict) else []  # Asegurar que se mantengan las rutas originales de las imágenes
-                    }
+                    "imagen_portada": datos.get("imagen_portada", {}),  # Mantener la información de la imagen de portada
+                    "imagenes": datos.get("imagenes", []),  # Mantener el array de imágenes adicionales
+                    "datos_originales": datos  # Mantener todos los datos originales sin modificar
                 }
                 
                 # Actualizar estadísticas
@@ -1813,30 +1840,10 @@ def procesar_datos_crudos(archivo_entrada: str, archivo_salida: str) -> None:
         with open(archivo_salida, 'w', encoding='utf-8') as f:
             json.dump(propiedades_estructuradas, f, ensure_ascii=False, indent=2)
             
-        # Guardar propiedades descartadas
-        archivo_descartadas = os.path.join(os.path.dirname(archivo_salida), "propiedades_descartadas.json")
-        with open(archivo_descartadas, 'w', encoding='utf-8') as f:
-            json.dump(propiedades_descartadas, f, ensure_ascii=False, indent=2)
-            
         logger.info("Procesamiento completado")
         logger.info(f"Total propiedades procesadas: {propiedades_estructuradas['estadisticas']['total_procesadas']}")
         logger.info(f"Propiedades válidas: {propiedades_estructuradas['estadisticas']['total_validas']}")
         logger.info(f"Propiedades inválidas: {propiedades_estructuradas['estadisticas']['total_invalidas']}")
-        logger.info(f"\nPropiedades descartadas: {propiedades_descartadas['total_descartadas']}")
-        logger.info("\nMotivos de descarte:")
-        for motivo, cantidad in propiedades_descartadas["estadisticas"]["motivos"].items():
-            logger.info(f"- {motivo}: {cantidad}")
-        logger.info("\nPalabras clave detectadas en descartes:")
-        for palabra, cantidad in propiedades_descartadas["estadisticas"]["palabras_clave_detectadas"].items():
-            logger.info(f"- {palabra}: {cantidad}")
-        
-        logger.info("\nTipos de propiedad:")
-        for tipo, cantidad in propiedades_estructuradas["estadisticas"]["tipos_propiedad"].items():
-            logger.info(f"- {tipo}: {cantidad}")
-            
-        logger.info("\nTipos de operación:")
-        for tipo, cantidad in propiedades_estructuradas["estadisticas"]["tipos_operacion"].items():
-            logger.info(f"- {tipo}: {cantidad}")
         
     except Exception as e:
         logger.error(f"Error general en el procesamiento: {str(e)}")
