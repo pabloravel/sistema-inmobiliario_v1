@@ -1,3 +1,21 @@
+# Excluir TODO excepto archivos esenciales
+*
+
+# Permitir SOLO archivos esenciales
+!.gitignore
+!requirements.txt
+!api_server_optimizado.py
+!api_server_digitalocean.py
+!app.yaml
+!frontend_desarrollo.html
+!GUIA_DIGITALOCEAN.md
+
+# Permitir carpeta resultados pero solo archivos específicos
+!resultados/
+resultados/*
+!resultados/propiedades_estructuradas.json
+!resultados/Imagen_no_disponible.jpg
+
 # Python
 __pycache__/
 *.py[cod]
