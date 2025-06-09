@@ -691,7 +691,7 @@ if __name__ == '__main__':
     try:
         # Configuración para deployment y desarrollo
         import os
-        port = int(os.environ.get('PORT', 5001))
+        port = int(os.environ.get('PORT', 8080))  # Usar 8080 como default para DigitalOcean
         app.run(host='0.0.0.0', port=port, debug=False)
     except KeyboardInterrupt:
         logger.info("Servidor detenido por el usuario")
