@@ -1,1 +1,1 @@
-web: python api_server_railway.py 
+web: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 api_server_optimizado:app 

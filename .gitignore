@@ -44,13 +44,19 @@ venv312/
 ENV/
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# Archivos de sistema
+# Sistema
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Archivos de sistema
 .localstorage/
 
 # Archivos de datos y resultados
@@ -59,16 +65,6 @@ resultados/
 datos/
 modelos/
 *.pkl
-
-# Logs
-*.log
-debug.log
-
-# Archivos temporales
-*.bak
-*.backup
-*_backup*
-*.tmp
 
 # Variables de entorno
 .env

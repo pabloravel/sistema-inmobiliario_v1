@@ -689,8 +689,10 @@ if __name__ == '__main__':
             logger.warning(f"No se pudo iniciar sistema de prevención: {e}")
     
     try:
-        # Configuración para desarrollo
-        app.run(host='0.0.0.0', port=5001, debug=False)
+        # Configuración para deployment y desarrollo
+        import os
+        port = int(os.environ.get('PORT', 5001))
+        app.run(host='0.0.0.0', port=port, debug=False)
     except KeyboardInterrupt:
         logger.info("Servidor detenido por el usuario")
         if preventor:
