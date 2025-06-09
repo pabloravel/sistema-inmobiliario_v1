@@ -40,13 +40,44 @@ def cargar_propiedades():
     global propiedades_data, propiedades_indices
     
     try:
-        archivo_json = "resultados/propiedades_estructuradas.json"
+        # Lista de posibles ubicaciones del archivo
+        posibles_archivos = [
+            "resultados/propiedades_estructuradas.json",
+            "./resultados/propiedades_estructuradas.json", 
+            "/workspace/resultados/propiedades_estructuradas.json",
+            "propiedades_estructuradas.json",
+            "./propiedades_estructuradas.json"
+        ]
+        
+        archivo_json = None
+        for archivo in posibles_archivos:
+            if os.path.exists(archivo):
+                archivo_json = archivo
+                break
+                
+        if not archivo_json:
+            logger.error(f"❌ No se encontró el archivo en ninguna ubicación")
+            logger.error(f"Directorio actual: {os.getcwd()}")
+            logger.error(f"Archivos en directorio actual: {os.listdir('.')}")
+            # Crear datos mínimos de ejemplo
+            propiedades_data = [
+                {
+                    'id': 'demo_001',
+                    'titulo': 'Casa de ejemplo - DigitalOcean',
+                    'propiedad': {
+                        'precio': {'texto': '$1,000,000'},
+                        'tipo_operacion': 'venta'
+                    },
+                    'ubicacion': {'direccion_completa': 'Ejemplo, Ciudad'},
+                    'imagen': '/Imagen_no_disponible.jpg'
+                }
+            ]
+            propiedades_indices = [0]
+            logger.warning("⚠️ Usando datos de ejemplo")
+            return True
+        
         logger.info(f"🔄 Cargando propiedades desde: {archivo_json}")
         
-        if not os.path.exists(archivo_json):
-            logger.error(f"❌ Archivo no encontrado: {archivo_json}")
-            return False
-            
         with open(archivo_json, 'r', encoding='utf-8') as f:
             data = json.load(f)
             
@@ -67,6 +98,7 @@ def cargar_propiedades():
         
     except Exception as e:
         logger.error(f"❌ Error cargando propiedades: {e}")
+        logger.error(f"Directorio actual: {os.getcwd()}")
         return False
 
 def obtener_estadisticas():
@@ -283,36 +315,29 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'error': 'Error interno del servidor'}), 500
 
-# Inicialización
 def inicializar_aplicacion():
-    """Inicializa la aplicación"""
-    logger.info("🚀 Iniciando Sistema Inmobiliario para DigitalOcean...")
+    """Inicializa la aplicación y carga los datos"""
+    logger.info("🚀 Inicializando aplicación...")
     
-    if not cargar_propiedades():
-        logger.error("❌ No se pudieron cargar las propiedades")
-        return False
-        
+    # Cargar propiedades
+    if cargar_propiedades():
+        logger.info("✅ Propiedades cargadas exitosamente")
+    else:
+        logger.error("❌ Error cargando propiedades")
+    
+    # Mostrar estadísticas
     stats = obtener_estadisticas()
     logger.info(f"📊 Estadísticas: {stats}")
     
-    logger.info("✅ Aplicación inicializada correctamente")
-    return True
+    logger.info("🎯 Aplicación lista para servir")
 
-if __name__ == '__main__':
-    # Inicializar aplicación
-    if not inicializar_aplicacion():
-        logger.error("❌ Error en la inicialización")
-        sys.exit(1)
-    
-    # Obtener puerto de DigitalOcean
-    port = int(os.environ.get('PORT', 8080))
-    
-    logger.info(f"🌐 Iniciando servidor en puerto {port}")
-    
-    # Ejecutar servidor
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False,
-        threaded=True
-    ) 
+# Inicializar cuando se importe el módulo
+if __name__ == "__main__":
+    # Modo desarrollo
+    inicializar_aplicacion()
+    port = int(os.environ.get('PORT', 5001))
+    logger.info(f"🏃‍♂️ Ejecutando en modo desarrollo en puerto {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
+else:
+    # Modo producción (WSGI)
+    inicializar_aplicacion() 
