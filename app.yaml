@@ -5,7 +5,7 @@ services:
   github:
     repo: tu-usuario/sistema-inmobiliario
     branch: main
-  run_command: gunicorn --bind 0.0.0.0:$PORT api_server_digitalocean:app
+  run_command: gunicorn --bind 0.0.0.0:$PORT wsgi:application
   environment_slug: python
   instance_count: 1
   instance_size_slug: basic-xxs
