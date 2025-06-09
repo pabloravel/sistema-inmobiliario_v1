@@ -652,12 +652,37 @@ def obtener_estadisticas_debug():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Endpoint de salud del servicio."""
-    return jsonify({
-        'status': 'healthy',
-        'propiedades_cargadas': len(propiedades_manager.propiedades),
-        'timestamp': datetime.now().isoformat()
-    })
+    """Endpoint de salud del servicio - DigitalOcean Compatible."""
+    try:
+        # Verificaciones de salud básicas
+        checks = {
+            'propiedades_manager': propiedades_manager is not None,
+            'propiedades_cargadas': len(propiedades_manager.propiedades) > 0,
+            'indices_creados': len(propiedades_manager.indices_ubicacion) > 0 if hasattr(propiedades_manager, 'indices_ubicacion') else True
+        }
+        
+        # Si todas las verificaciones pasan
+        if all(checks.values()):
+            return jsonify({
+                'status': 'healthy',
+                'propiedades_cargadas': len(propiedades_manager.propiedades),
+                'timestamp': datetime.now().isoformat(),
+                'checks': checks,
+                'version': '1.0.0'
+            }), 200
+        else:
+            return jsonify({
+                'status': 'unhealthy',
+                'checks': checks,
+                'timestamp': datetime.now().isoformat()
+            }), 503
+    except Exception as e:
+        logger.error(f"Health check falló: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 503
 
 @app.route('/frontend_desarrollo.html')
 def servir_frontend():
@@ -667,6 +692,31 @@ def servir_frontend():
     except Exception as e:
         logger.error(f"Error sirviendo frontend: {e}")
         return f"Error sirviendo frontend: {str(e)}", 500
+
+@app.route('/ready')
+def readiness_check():
+    """Endpoint de readiness para DigitalOcean"""
+    try:
+        # Verificar que el archivo de datos existe
+        if not os.path.exists('resultados/propiedades_estructuradas.json'):
+            return jsonify({'status': 'not_ready', 'reason': 'Archivo de datos no encontrado'}), 503
+        
+        # Verificar que PropiedadesManager está inicializado
+        if propiedades_manager is None:
+            return jsonify({'status': 'not_ready', 'reason': 'PropiedadesManager no inicializado'}), 503
+        
+        # Verificar que hay propiedades cargadas
+        if len(propiedades_manager.propiedades) == 0:
+            return jsonify({'status': 'not_ready', 'reason': 'No hay propiedades cargadas'}), 503
+        
+        return jsonify({
+            'status': 'ready',
+            'propiedades': len(propiedades_manager.propiedades),
+            'timestamp': datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'status': 'not_ready', 'error': str(e)}), 503
 
 @app.route('/')
 def index():
