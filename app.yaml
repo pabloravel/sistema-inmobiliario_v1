@@ -15,7 +15,5 @@ services:
   envs:
   - key: FLASK_ENV
     value: production
-  - key: FLASK_DEBUG
-    value: "false"
   - key: PYTHONPATH
     value: "." 
