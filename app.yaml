@@ -9,10 +9,13 @@ services:
   environment_slug: python
   instance_count: 1
   instance_size_slug: basic-xxs
+  http_port: 8080
   routes:
   - path: /
   envs:
   - key: FLASK_ENV
     value: production
   - key: FLASK_DEBUG
-    value: "false" 
+    value: "false"
+  - key: PYTHONPATH
+    value: "." 
