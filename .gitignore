@@ -10,6 +10,13 @@
 !frontend_desarrollo.html
 !GUIA_DIGITALOCEAN.md
 
+# Archivos para Render.com
+!app.py
+!api_server_render.py
+!gunicorn.conf.py
+!render.yaml
+!propiedades_demo.json
+
 # Permitir carpeta resultados pero solo archivos específicos
 !resultados/
 resultados/*
