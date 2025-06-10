@@ -47,31 +47,65 @@ class PropiedadesManager:
         """Cargar datos desde archivo JSON"""
         try:
             if os.path.exists(self.archivo_json):
+                logger.info(f"📁 Intentando cargar: {self.archivo_json}")
                 with open(self.archivo_json, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.propiedades = data.get('propiedades', {})
-                    logger.info(f"Cargadas {len(self.propiedades)} propiedades")
+                    logger.info(f"📊 Tipo de datos cargados: {type(data)}")
+                    
+                    # Manejar diferentes formatos
+                    if isinstance(data, dict):
+                        self.propiedades = data.get('propiedades', {})
+                    elif isinstance(data, list):
+                        # Convertir lista a diccionario si es necesario
+                        self.propiedades = {f"prop_{i}": prop for i, prop in enumerate(data)}
+                        logger.info("🔄 Convertida lista a diccionario")
+                    else:
+                        logger.error(f"❌ Formato no reconocido: {type(data)}")
+                        self.propiedades = {}
+                        
+                    logger.info(f"✅ Cargadas {len(self.propiedades)} propiedades desde archivo principal")
             else:
+                logger.info(f"❌ Archivo principal no encontrado: {self.archivo_json}")
                 # Archivos alternativos
                 archivos_alt = ['propiedades.json', 'propiedades_demo.json']
                 for archivo_alt in archivos_alt:
                     if os.path.exists(archivo_alt):
+                        logger.info(f"📁 Intentando cargar alternativo: {archivo_alt}")
                         with open(archivo_alt, 'r', encoding='utf-8') as f:
                             data = json.load(f)
-                            self.propiedades = data.get('propiedades', {})
-                            logger.info(f"Cargadas {len(self.propiedades)} propiedades desde {archivo_alt}")
+                            logger.info(f"📊 Tipo de datos alternativos: {type(data)}")
+                            
+                            # Manejar diferentes formatos
+                            if isinstance(data, dict):
+                                self.propiedades = data.get('propiedades', {})
+                            elif isinstance(data, list):
+                                # Convertir lista a diccionario si es necesario
+                                self.propiedades = {f"prop_{i}": prop for i, prop in enumerate(data)}
+                                logger.info("🔄 Convertida lista alternativa a diccionario")
+                            else:
+                                logger.error(f"❌ Formato alternativo no reconocido: {type(data)}")
+                                continue
+                                
+                            logger.info(f"✅ Cargadas {len(self.propiedades)} propiedades desde {archivo_alt}")
                         break
                 else:
-                    logger.warning("No se encontró archivo de propiedades")
+                    logger.warning("⚠️ No se encontró ningún archivo de propiedades")
                     self.propiedades = {}
         except Exception as e:
-            logger.error(f"Error cargando datos: {e}")
+            logger.error(f"💥 Error cargando datos: {e}")
+            logger.error(f"📍 Error en línea: {e.__traceback__.tb_lineno if e.__traceback__ else 'desconocida'}")
             self.propiedades = {}
 
     def crear_indices(self):
         """Crear índices para búsqueda rápida"""
         try:
+            logger.info(f"🔍 Creando índices para {len(self.propiedades)} propiedades")
+            
             for pid, prop in self.propiedades.items():
+                if not isinstance(prop, dict):
+                    logger.warning(f"⚠️ Propiedad {pid} no es un diccionario: {type(prop)}")
+                    continue
+                    
                 # Índice por tipo de operación
                 tipo_op = prop.get('tipo_operacion', 'desconocido').lower()
                 if tipo_op not in self.indices['tipo_operacion']:
@@ -84,9 +118,10 @@ class PropiedadesManager:
                     self.indices['ciudad'][ciudad] = []
                 self.indices['ciudad'][ciudad].append(pid)
                 
-            logger.info("Índices creados exitosamente")
+            logger.info(f"✅ Índices creados exitosamente: {dict(self.indices['tipo_operacion'])}")
         except Exception as e:
-            logger.error(f"Error creando índices: {e}")
+            logger.error(f"💥 Error creando índices: {e}")
+            logger.error(f"📍 Error en línea: {e.__traceback__.tb_lineno if e.__traceback__ else 'desconocida'}")
 
     def obtener_propiedades_paginadas(self, pagina: int = 1, por_pagina: int = 24) -> Dict:
         """Obtener propiedades con paginación"""
