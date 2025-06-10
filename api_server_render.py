@@ -53,12 +53,40 @@ class PropiedadesManager:
                     logger.info(f"📊 Tipo de datos cargados: {type(data)}")
                     
                     # Manejar diferentes formatos
-                    if isinstance(data, dict):
-                        self.propiedades = data.get('propiedades', {})
+                    if isinstance(data, dict) and 'propiedades' in data:
+                        self.propiedades = data['propiedades']
+                        logger.info("📊 Formato detectado: Objeto con propiedades")
+                    elif isinstance(data, dict):
+                        self.propiedades = data
+                        logger.info("📊 Formato detectado: Diccionario directo")
                     elif isinstance(data, list):
-                        # Convertir lista a diccionario si es necesario
-                        self.propiedades = {f"prop_{i}": prop for i, prop in enumerate(data)}
-                        logger.info("🔄 Convertida lista a diccionario")
+                        # Convertir lista del formato principal a diccionario adaptado
+                        self.propiedades = {}
+                        for prop in data:
+                            if isinstance(prop, dict) and 'id' in prop:
+                                # Adaptar formato del archivo principal al esperado por el frontend
+                                prop_adaptada = {
+                                    'id': prop['id'],
+                                    'titulo': prop.get('titulo', 'Sin título'),
+                                    'precio': prop.get('propiedad', {}).get('precio', {}).get('valor', 0),
+                                    'precio_formateado': prop.get('propiedad', {}).get('precio', {}).get('formato', 'Consultar'),
+                                    'tipo_operacion': prop.get('propiedad', {}).get('tipo_operacion', 'desconocido'),
+                                    'tipo_propiedad': prop.get('propiedad', {}).get('tipo_propiedad', 'propiedad'),
+                                    'ubicacion': prop.get('ubicacion', {}).get('direccion_completa', ''),
+                                    'ciudad': prop.get('ubicacion', {}).get('ciudad', 'no_especificada').lower(),
+                                    'descripcion': prop.get('descripcion_original', ''),
+                                    'imagen': f"{prop.get('ubicacion', {}).get('ciudad', 'cuernavaca').lower()}-{prop.get('fecha', '2025-05-30')}-{prop['id']}.jpg",
+                                    'fecha': prop.get('fecha', '2025-05-30'),
+                                    'vendedor': prop.get('vendedor', 'Facebook Marketplace'),
+                                    'caracteristicas': prop.get('caracteristicas', []),
+                                    'amenidades': prop.get('amenidades', {}),
+                                    'superficie': prop.get('superficie', ''),
+                                    'link': prop.get('link', '')
+                                }
+                                self.propiedades[prop['id']] = prop_adaptada
+                            else:
+                                logger.warning(f"⚠️ Propiedad sin ID o formato incorrecto: {type(prop)}")
+                        logger.info(f"🔄 Convertida lista a diccionario: {len(self.propiedades)} propiedades adaptadas")
                     else:
                         logger.error(f"❌ Formato no reconocido: {type(data)}")
                         self.propiedades = {}
