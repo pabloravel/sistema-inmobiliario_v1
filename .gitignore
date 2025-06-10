@@ -79,6 +79,8 @@ modelos/
 
 # Archivos específicos del proyecto que no deben versionarse
 fb_state.json
-propiedades.json
-propiedades_estructuradas.json
 propiedades_invalidas.json
+
+# IMPORTANTE: Permitir archivos esenciales para Render
+!propiedades.json
+!propiedades_estructuradas.json

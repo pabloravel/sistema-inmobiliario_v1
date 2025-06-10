@@ -174,8 +174,26 @@ class PropiedadesManager:
 def inicializar_manager():
     global propiedades_manager
     if propiedades_manager is None:
-        archivo_propiedades = 'resultados/propiedades_estructuradas.json'
-        propiedades_manager = PropiedadesManager(archivo_propiedades)
+        # Buscar archivo en múltiples ubicaciones
+        archivos_posibles = [
+            'propiedades_estructuradas.json',  # Directorio raíz
+            'resultados/propiedades_estructuradas.json',  # Subdirectorio
+            'propiedades.json',  # Alternativo en raíz
+            'propiedades_demo.json'  # Demo como último recurso
+        ]
+        
+        archivo_encontrado = None
+        for archivo in archivos_posibles:
+            if os.path.exists(archivo):
+                archivo_encontrado = archivo
+                logger.info(f"📁 Archivo encontrado: {archivo}")
+                break
+        
+        if not archivo_encontrado:
+            archivo_encontrado = 'propiedades_demo.json'  # Fallback
+            logger.warning("⚠️ Usando archivo demo como fallback")
+            
+        propiedades_manager = PropiedadesManager(archivo_encontrado)
         logger.info("🏠 Sistema inmobiliario inicializado para Render")
 
 # Rutas API
