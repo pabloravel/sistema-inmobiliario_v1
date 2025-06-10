@@ -39,3 +39,43 @@
     "version": "demo"
   }
 } 
+  "propiedades": {
+    "demo001": {
+      "id": "demo001",
+      "titulo": "Casa demo en Cuernavaca",
+      "precio": 2500000,
+      "precio_formateado": "$2,500,000",
+      "tipo_operacion": "venta",
+      "tipo_propiedad": "casa",
+      "ubicacion": "Cuernavaca, Morelos",
+      "ciudad": "cuernavaca",
+      "descripcion": "Casa demo para pruebas del sistema",
+      "caracteristicas": ["3 recámaras", "2 baños", "Jardín"],
+      "superficie": "120 m²",
+      "imagen": "demo.jpg",
+      "fecha": "2025-06-10",
+      "vendedor": "Sistema Demo"
+    },
+    "demo002": {
+      "id": "demo002", 
+      "titulo": "Departamento demo",
+      "precio": 8500,
+      "precio_formateado": "$8,500/mes",
+      "tipo_operacion": "renta",
+      "tipo_propiedad": "departamento", 
+      "ubicacion": "Centro, Cuernavaca",
+      "ciudad": "cuernavaca",
+      "descripcion": "Departamento demo para pruebas del sistema",
+      "caracteristicas": ["2 recámaras", "1 baño", "Estacionamiento"],
+      "superficie": "80 m²",
+      "imagen": "demo.jpg",
+      "fecha": "2025-06-10",
+      "vendedor": "Sistema Demo"
+    }
+  },
+  "metadata": {
+    "total": 2,
+    "fecha_actualizacion": "2025-06-10",
+    "version": "demo"
+  }
+} 

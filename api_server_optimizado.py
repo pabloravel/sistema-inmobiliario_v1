@@ -69,11 +69,30 @@ class PropiedadesManager:
             logger.info(f"Cargando propiedades desde: {self.archivo_json}")
             with open(self.archivo_json, 'r', encoding='utf-8') as f:
                 datos = json.load(f)
-                # Verificar si es directamente una lista o tiene estructura {"propiedades": [...]}
+                
+                # MANEJO ROBUSTO DE FORMATO: Lista o Diccionario
                 if isinstance(datos, list):
+                    # El archivo principal es una lista de propiedades
+                    logger.info(f"📊 Formato detectado: Lista con {len(datos)} elementos")
                     self.propiedades = datos
+                elif isinstance(datos, dict):
+                    # Verificar si es estructura {"propiedades": [...]}
+                    if 'propiedades' in datos:
+                        if isinstance(datos['propiedades'], list):
+                            self.propiedades = datos['propiedades']
+                            logger.info(f"📊 Formato detectado: Diccionario con lista de {len(self.propiedades)} propiedades")
+                        else:
+                            # Es un diccionario de propiedades {id: propiedad}
+                            self.propiedades = list(datos['propiedades'].values())
+                            logger.info(f"📊 Formato detectado: Diccionario con {len(self.propiedades)} propiedades")
+                    else:
+                        # Es directamente un diccionario de propiedades
+                        self.propiedades = list(datos.values())
+                        logger.info(f"📊 Formato detectado: Diccionario directo con {len(self.propiedades)} propiedades")
                 else:
-                    self.propiedades = datos.get('propiedades', [])
+                    logger.error(f"❌ Formato no reconocido: {type(datos)}")
+                    self.propiedades = []
+                    
             logger.info(f"Cargadas {len(self.propiedades)} propiedades")
         except Exception as e:
             logger.error(f"Error cargando propiedades: {e}")
@@ -282,22 +301,60 @@ class PropiedadesManager:
     
     def obtener_propiedad_simplificada(self, indice: int) -> Dict:
         """Obtiene una versión simplificada de la propiedad para listados."""
-        prop = self.propiedades[indice]
-        return {
-            'id': prop.get('id'),
-            'titulo': prop.get('titulo', '')[:100],  # Limitar título
-            'url': prop.get('link'),  # URL original del anuncio
-            'descripcion': prop.get('descripcion_original', ''),  # Descripción completa
-            'precio': prop.get('propiedad', {}).get('precio', {}),
-            'tipo_propiedad': prop.get('propiedad', {}).get('tipo_propiedad'),
-            'tipo_operacion': prop.get('propiedad', {}).get('tipo_operacion'),
-            'operacion': prop.get('operacion') or prop.get('propiedad', {}).get('tipo_operacion'),  # Campo operacion corregido
-            'ciudad': prop.get('ubicacion', {}).get('ciudad'),
-            'colonia': prop.get('ubicacion', {}).get('colonia'),
-            'ubicacion': prop.get('ubicacion', {}),  # Incluir ubicación completa
-            'imagen_portada': prop.get('imagen_portada', {}),
-            'caracteristicas': prop.get('caracteristicas', [])
-        }
+        try:
+            prop = self.propiedades[indice]
+            
+            # VALIDACION: Verificar que prop sea un diccionario
+            if not isinstance(prop, dict):
+                logger.warning(f"⚠️ Propiedad en índice {indice} no es un diccionario: {type(prop)}")
+                return {
+                    'id': f'prop_{indice}',
+                    'titulo': 'Propiedad no válida',
+                    'url': '',
+                    'descripcion': '',
+                    'precio': {'valor': 0, 'texto': 'No disponible'},
+                    'tipo_propiedad': 'desconocido',
+                    'tipo_operacion': 'desconocido',
+                    'operacion': 'desconocido',
+                    'ciudad': 'desconocida',
+                    'colonia': '',
+                    'ubicacion': {},
+                    'imagen_portada': {},
+                    'caracteristicas': []
+                }
+            
+            return {
+                'id': prop.get('id'),
+                'titulo': prop.get('titulo', '')[:100],  # Limitar título
+                'url': prop.get('link'),  # URL original del anuncio
+                'descripcion': prop.get('descripcion_original', ''),  # Descripción completa
+                'precio': prop.get('propiedad', {}).get('precio', {}),
+                'tipo_propiedad': prop.get('propiedad', {}).get('tipo_propiedad'),
+                'tipo_operacion': prop.get('propiedad', {}).get('tipo_operacion'),
+                'operacion': prop.get('operacion') or prop.get('propiedad', {}).get('tipo_operacion'),  # Campo operacion corregido
+                'ciudad': prop.get('ubicacion', {}).get('ciudad'),
+                'colonia': prop.get('ubicacion', {}).get('colonia'),
+                'ubicacion': prop.get('ubicacion', {}),  # Incluir ubicación completa
+                'imagen_portada': prop.get('imagen_portada', {}),
+                'caracteristicas': prop.get('caracteristicas', [])
+            }
+        except Exception as e:
+            logger.error(f"Error obteniendo propiedad simplificada para índice {indice}: {e}")
+            return {
+                'id': f'prop_{indice}',
+                'titulo': 'Error al cargar propiedad',
+                'url': '',
+                'descripcion': '',
+                'precio': {'valor': 0, 'texto': 'No disponible'},
+                'tipo_propiedad': 'error',
+                'tipo_operacion': 'error',
+                'operacion': 'error',
+                'ciudad': 'error',
+                'colonia': '',
+                'ubicacion': {},
+                'imagen_portada': {},
+                'caracteristicas': []
+            }
 
 # REINICIALIZAR COMPLETAMENTE - SOLUCIÓN TEMPORAL  
 logger.info("🔄 REINICIALIZANDO PropiedadesManager para reflejar correcciones...")
@@ -650,6 +707,20 @@ def obtener_estadisticas_debug():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/version', methods=['GET'])
+def obtener_version():
+    """Endpoint para obtener la versión actual y timestamp - útil para cache busting"""
+    try:
+        return jsonify({
+            'version': '1.0.0',
+            'timestamp': int(datetime.now().timestamp()),
+            'build_time': datetime.now().isoformat(),
+            'cache_buster': int(datetime.now().timestamp() * 1000)  # Milisegundos
+        })
+    except Exception as e:
+        logger.error(f"Error obteniendo versión: {e}")
+        return jsonify({'error': 'Error interno'}), 500
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Endpoint de salud del servicio - DigitalOcean Compatible."""
@@ -686,9 +757,15 @@ def health_check():
 
 @app.route('/frontend_desarrollo.html')
 def servir_frontend():
-    """Sirve el archivo HTML del frontend"""
+    """Sirve el archivo HTML del frontend con headers anti-cache"""
     try:
-        return send_file('frontend_desarrollo.html', mimetype='text/html')
+        response = send_file('frontend_desarrollo.html', mimetype='text/html')
+        # Headers para evitar cache
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        response.headers['Last-Modified'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
+        return response
     except Exception as e:
         logger.error(f"Error sirviendo frontend: {e}")
         return f"Error sirviendo frontend: {str(e)}", 500
@@ -741,7 +818,7 @@ if __name__ == '__main__':
     try:
         # Configuración para deployment y desarrollo
         import os
-        port = int(os.environ.get('PORT', 8080))  # Usar 8080 como default para DigitalOcean
+        port = int(os.environ.get('PORT', 5001))  # Usar 5001 como default para desarrollo local
         app.run(host='0.0.0.0', port=port, debug=False)
     except KeyboardInterrupt:
         logger.info("Servidor detenido por el usuario")

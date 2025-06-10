@@ -17,3 +17,4 @@ services:
     value: production
   - key: PYTHONPATH
     value: "." 
+    value: "." 

@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo de Propiedades - Desarrollo Local</title>
+    
+    <!-- Meta tags para prevenir cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <style>
         :root {
             --primary: #2563eb;
@@ -497,6 +503,162 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
         }
 
+        /* Estilos para autenticación */
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        /* Estilos para acciones de propiedades */
+        .property-actions-extended {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .property-actions-extended button {
+            flex: 1;
+            min-width: 80px;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .btn-favorite {
+            background: #ff6b6b !important;
+            color: white !important;
+            border-color: #ff6b6b !important;
+        }
+        
+        .btn-favorite.active {
+            background: #c92a2a !important;
+        }
+        
+        .btn-contact {
+            background: #51cf66 !important;
+            color: white !important;
+            border-color: #51cf66 !important;
+        }
+        
+        .btn-delete {
+            background: #ff8787 !important;
+            color: white !important;
+            border-color: #ff8787 !important;
+        }
+        
+        .btn-whatsapp {
+            background: #25d366 !important;
+            color: white !important;
+            border-color: #25d366 !important;
+        }
+        
+        /* Notificaciones */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: var(--success);
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1001;
+            display: none;
+        }
+        
+        .notification.error {
+            background: var(--danger);
+        }
+        
+        .notification.warning {
+            background: var(--warning);
+        }
+
         /* Responsive */
         @media (min-width: 1200px) {
             .properties-grid {
@@ -544,8 +706,22 @@
                     <div class="status-dot"></div>
                     <span>API: <span id="api-status">Verificando...</span></span>
                 </div>
+                <button class="btn btn-small" onclick="forzarRecargaSinCache()" title="Forzar actualización y limpiar cache">
+                    🔄 Forzar Actualización
+                </button>
                 <div class="status-indicator">
                     <span>🏠 Total: <span id="total-propiedades">-</span> propiedades</span>
+                </div>
+                <!-- Sistema de Autenticación -->
+                <div class="auth-section" id="auth-section">
+                    <div class="user-info" id="user-info" style="display: none;">
+                        <span>👤 <span id="user-name"></span></span>
+                        <button class="btn btn-small" onclick="logout()" style="margin-left: 10px;">Cerrar Sesión</button>
+                    </div>
+                    <div class="auth-buttons" id="auth-buttons">
+                        <button class="btn btn-small" onclick="mostrarLogin()">Iniciar Sesión</button>
+                        <button class="btn btn-small btn-secondary" onclick="mostrarRegistro()">Registrarse</button>
+                    </div>
                 </div>
             </div>
             <div class="stats-row">
@@ -695,6 +871,71 @@
         </div>
     </div>
 
+    <!-- Modales de autenticación -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Iniciar Sesión</h2>
+                <span class="close" onclick="cerrarModal('loginModal')">&times;</span>
+            </div>
+            <form onsubmit="login(event)">
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrarse</h2>
+                <span class="close" onclick="cerrarModal('registerModal')">&times;</span>
+            </div>
+            <form onsubmit="register(event)">
+                <div class="form-group">
+                    <label for="registerName">Nombre:</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPhone">Teléfono:</label>
+                    <input type="tel" id="registerPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña:</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Registrarse</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de contacto del asesor -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Contactar Asesor</h2>
+                <span class="close" onclick="cerrarModal('contactModal')">&times;</span>
+            </div>
+            <div id="contact-info">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificación -->
+    <div id="notification" class="notification"></div>
+
     <script>
         // Configuración
         const API_BASE = 'http://localhost:5001/api';
@@ -707,6 +948,46 @@
         let propiedadesTotales = 0;
         let tiempoInicio = 0;
         
+        // ========== SISTEMA DE CACHE BUSTING ==========
+        let cacheBuster = Date.now();
+        
+        // Función para agregar cache busting a URLs
+        function agregarCacheBuster(url) {
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}_cb=${cacheBuster}&_t=${Date.now()}`;
+        }
+        
+        // Función para refrescar cache buster desde el servidor
+        async function actualizarCacheBuster() {
+            try {
+                const response = await fetch('/api/version');
+                if (response.ok) {
+                    const version = await response.json();
+                    cacheBuster = version.cache_buster;
+                    console.log('🔄 Cache buster actualizado:', cacheBuster);
+                }
+            } catch (error) {
+                console.warn('No se pudo actualizar cache buster:', error);
+            }
+        }
+        
+        // Función para forzar recarga sin cache
+        function forzarRecargaSinCache() {
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+            
+            // Actualizar cache buster y recargar
+            cacheBuster = Date.now();
+            location.reload(true);
+        }
+        
+        // Agregar botón de "Forzar Actualización" al header
+        
         // Función para formatear texto de filtros
         function formatearTextoFiltro(texto) {
             return texto
@@ -716,11 +997,20 @@
                 .join(' ');
         }
 
+        // Variables de autenticación
+        let usuarioActual = null;
+        let favoritos = JSON.parse(localStorage.getItem('favoritos')) || [];
+
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar cache busting
+            actualizarCacheBuster();
+            setInterval(actualizarCacheBuster, 30000); // Actualizar cada 30 segundos
+            
             verificarAPI();
             cargarEstadisticas();
             cargarPropiedades();
+            verificarSesion();
             
             // Event listeners para filtros en tiempo real
             document.getElementById('busqueda').addEventListener('input', function(e) {
@@ -734,7 +1024,7 @@
         // Verificar conexión con API
         async function verificarAPI() {
             try {
-                const response = await fetch(`${API_BASE}/../health`);
+                const response = await fetch(agregarCacheBuster(`${API_BASE}/../health`));
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('api-status').textContent = 'Conectado ✅';
@@ -744,14 +1034,14 @@
                 }
             } catch (error) {
                 document.getElementById('api-status').textContent = 'Error ❌';
-                mostrarError('No se puede conectar con el servidor API. Asegúrate de que esté ejecutándose en localhost:5000');
+                mostrarError('No se puede conectar con el servidor API. Asegúrate de que esté ejecutándose en localhost:5001');
             }
         }
 
         // Cargar estadísticas para filtros
         async function cargarEstadisticas() {
             try {
-                const response = await fetch(`${API_BASE}/estadisticas`);
+                const response = await fetch(agregarCacheBuster(`${API_BASE}/estadisticas`));
                 const stats = await response.json();
                 
                 // Actualizar contadores en el header
@@ -861,12 +1151,13 @@
                     params.append('orden_precio', ordenPrecio);
                 }
 
-                const response = await fetch(`${API_BASE}/propiedades?${params}`);
+                const response = await fetch(agregarCacheBuster(`${API_BASE}/propiedades?${params}`));
                 const data = await response.json();
                 
                 mostrarPropiedades(data.propiedades);
                 actualizarPaginacion(data);
                 actualizarStats(data);
+                actualizarFavoritos(); // Actualizar estado de favoritos
                 
                 totalPaginas = data.total_paginas;
                 propiedadesTotales = data.total;
@@ -914,10 +1205,13 @@
                                 <span style="color: #2563eb; font-weight: 600;">ID:</span> 
                                 <span style="color: #10b981; font-weight: 500;">${prop.id}</span>
                             </div>
-                            <div class="property-actions" onclick="event.stopPropagation();">
-                                <button onclick="toggleDescription('${prop.id}')">Ver descripción</button>
-                                <button onclick="verDetalle('${prop.id}')">Ver detalle</button>
-                                <button onclick="enviarPorWhatsApp('${prop.id}')" style="background: #25d366; color: white;">📱 WhatsApp</button>
+                            <div class="property-actions-extended" onclick="event.stopPropagation();">
+                                <button onclick="toggleDescription('${prop.id}')">👁️ Ver</button>
+                                <button onclick="verDetalle('${prop.id}')">📋 Detalle</button>
+                                <button onclick="toggleFavorite('${prop.id}')" class="btn-favorite" id="fav-${prop.id}">❤️</button>
+                                <button onclick="contactarAsesor('${prop.id}')" class="btn-contact">📞</button>
+                                <button onclick="enviarPorWhatsAppMejorado('${prop.id}')" class="btn-whatsapp">📱</button>
+                                <button onclick="eliminarPropiedad('${prop.id}')" class="btn-delete" style="display: none;" id="del-${prop.id}">🗑️</button>
                             </div>
                             <div class="property-description" id="desc-${prop.id}" style="display: none;">
                                 ${prop.descripcion || 'Descripción no disponible'}
@@ -926,6 +1220,16 @@
                     </div>
                 `;
             }).join('');
+            
+            // Actualizar estado de favoritos después de renderizar
+            setTimeout(() => {
+                favoritos.forEach(propiedadId => {
+                    const btn = document.getElementById(`fav-${propiedadId}`);
+                    if (btn) {
+                        btn.classList.add('active');
+                    }
+                });
+            }, 100);
         }
 
         // Formatear ubicación
@@ -1008,17 +1312,23 @@
             return Array.from(checkboxes).map(cb => cb.value);
         }
 
-        // Aplicar filtros en tiempo real
+        // Aplicar filtros en tiempo real (CORREGIDO)
         function aplicarFiltrosEnTiempoReal() {
             filtrosActivos = {};
             
-            // Búsqueda por texto
+            // Búsqueda por texto - CORREGIDO para que funcione
             const terminoBusqueda = document.getElementById('busqueda').value.trim();
             if (terminoBusqueda.length >= 2) {
                 filtrosActivos.busqueda = terminoBusqueda;
             }
             
-            // Recoger valores de filtros de checkboxes
+            // Ordenamiento por precio
+            const ordenPrecio = document.getElementById('ordenar_precio').value;
+            if (ordenPrecio) {
+                filtrosActivos.orden_precio = ordenPrecio;
+            }
+            
+            // Recoger valores de filtros de checkboxes - NOMBRES CORREGIDOS
             const ciudadesSeleccionadas = obtenerCheckboxesSeleccionados('ciudades-container');
             const tiposSeleccionados = obtenerCheckboxesSeleccionados('tipos-container');
             const operacionesSeleccionadas = obtenerCheckboxesSeleccionados('operaciones-container');
@@ -1030,13 +1340,13 @@
             const precioMin = document.getElementById('precio_min').value;
             const precioMax = document.getElementById('precio_max').value;
             
-            // Solo aplicar filtros si hay selecciones
-            if (ciudadesSeleccionadas.length > 0) filtrosActivos.ciudades = ciudadesSeleccionadas;
-            if (tiposSeleccionados.length > 0) filtrosActivos.tipos = tiposSeleccionados;
-            if (operacionesSeleccionadas.length > 0) filtrosActivos.operaciones = operacionesSeleccionadas;
-            if (amenidadesSeleccionadas.length > 0) filtrosActivos.amenidades = amenidadesSeleccionadas;
-            if (documentacionSeleccionada.length > 0) filtrosActivos.legal = documentacionSeleccionada;
-            if (caracteristicasSeleccionadas.length > 0) filtrosActivos.arquitectura = caracteristicasSeleccionadas;
+            // Solo aplicar filtros si hay selecciones - NOMBRES CORRECTOS PARA LA API
+            if (ciudadesSeleccionadas.length > 0) filtrosActivos.ciudad = ciudadesSeleccionadas.join(',');
+            if (tiposSeleccionados.length > 0) filtrosActivos.tipo = tiposSeleccionados.join(',');
+            if (operacionesSeleccionadas.length > 0) filtrosActivos.operacion = operacionesSeleccionadas.join(',');
+            if (amenidadesSeleccionadas.length > 0) filtrosActivos.amenidades = amenidadesSeleccionadas.join(',');
+            if (documentacionSeleccionada.length > 0) filtrosActivos.legal = documentacionSeleccionada.join(',');
+            if (caracteristicasSeleccionadas.length > 0) filtrosActivos.arquitectura = caracteristicasSeleccionadas.join(',');
             if (precioMin) filtrosActivos.precio_min = precioMin;
             if (precioMax) filtrosActivos.precio_max = precioMax;
             
@@ -1531,6 +1841,292 @@ ${mensajeTexto}
         function mostrarError(mensaje) {
             const grid = document.getElementById('propiedades-grid');
             grid.innerHTML = `<div class="error">${mensaje}</div>`;
+        }
+
+        // ========== FUNCIONES DE AUTENTICACIÓN ==========
+        
+        async function verificarSesion() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/perfil`);
+                if (response.ok) {
+                    const usuario = await response.json();
+                    usuarioActual = usuario;
+                    mostrarUsuario(usuario);
+                } else {
+                    mostrarBotonesAuth();
+                }
+            } catch (error) {
+                mostrarBotonesAuth();
+            }
+        }
+
+        function mostrarUsuario(usuario) {
+            document.getElementById('user-name').textContent = usuario.nombre || usuario.email;
+            document.getElementById('user-info').style.display = 'flex';
+            document.getElementById('auth-buttons').style.display = 'none';
+            
+            // Mostrar botón de eliminar si es admin
+            if (usuario.rol === 'admin') {
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.style.display = 'inline-block';
+                });
+            }
+        }
+
+        function mostrarBotonesAuth() {
+            document.getElementById('user-info').style.display = 'none';
+            document.getElementById('auth-buttons').style.display = 'flex';
+        }
+
+        function mostrarLogin() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+
+        function mostrarRegistro() {
+            document.getElementById('registerModal').style.display = 'block';
+        }
+
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostrarNotificacion('Sesión iniciada correctamente', 'success');
+                    cerrarModal('loginModal');
+                    verificarSesion();
+                } else {
+                    mostrarNotificacion(result.error || 'Error al iniciar sesión', 'error');
+                }
+            } catch (error) {
+                mostrarNotificacion('Error de conexión', 'error');
+            }
+        }
+
+        async function register(event) {
+            event.preventDefault();
+            const nombre = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const telefono = document.getElementById('registerPhone').value;
+            const password = document.getElementById('registerPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/registro`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, email, telefono, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostrarNotificacion('Registro exitoso. Puedes iniciar sesión', 'success');
+                    cerrarModal('registerModal');
+                    mostrarLogin();
+                } else {
+                    mostrarNotificacion(result.error || 'Error en el registro', 'error');
+                }
+            } catch (error) {
+                mostrarNotificacion('Error de conexión', 'error');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+                usuarioActual = null;
+                mostrarBotonesAuth();
+                mostrarNotificacion('Sesión cerrada', 'success');
+                
+                // Ocultar botones de admin
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.style.display = 'none';
+                });
+            } catch (error) {
+                mostrarNotificacion('Error al cerrar sesión', 'error');
+            }
+        }
+
+        // ========== FUNCIONES DE FAVORITOS ==========
+        
+        function toggleFavorite(propiedadId) {
+            const index = favoritos.indexOf(propiedadId);
+            const btn = document.getElementById(`fav-${propiedadId}`);
+            
+            if (index === -1) {
+                favoritos.push(propiedadId);
+                btn.classList.add('active');
+                mostrarNotificacion('Agregado a favoritos', 'success');
+            } else {
+                favoritos.splice(index, 1);
+                btn.classList.remove('active');
+                mostrarNotificacion('Eliminado de favoritos', 'success');
+            }
+            
+            localStorage.setItem('favoritos', JSON.stringify(favoritos));
+        }
+
+        // ========== FUNCIÓN DE CONTACTAR ASESOR ==========
+        
+        async function contactarAsesor(propiedadId) {
+            try {
+                const response = await fetch(`${API_BASE}/contactos`);
+                const contactos = await response.json();
+                
+                // Por simplicidad, mostrar el primer asesor disponible
+                const asesor = contactos[0] || {
+                    nombre: 'Asesor Inmobiliario',
+                    telefono: '7772677563',
+                    email: 'contacto@inmobiliaria.com'
+                };
+                
+                document.getElementById('contact-info').innerHTML = `
+                    <div class="form-group">
+                        <strong>👤 Nombre:</strong> ${asesor.nombre}
+                    </div>
+                    <div class="form-group">
+                        <strong>📱 Teléfono:</strong> 
+                        <a href="tel:${asesor.telefono}">${asesor.telefono}</a>
+                    </div>
+                    <div class="form-group">
+                        <strong>📧 Email:</strong> 
+                        <a href="mailto:${asesor.email}">${asesor.email}</a>
+                    </div>
+                    <div class="form-group">
+                        <strong>🏠 Propiedad:</strong> ${propiedadId}
+                    </div>
+                    <button class="btn" style="width: 100%; margin-top: 1rem;" 
+                            onclick="window.open('https://wa.me/${asesor.telefono}?text=Hola, me interesa la propiedad ${propiedadId}', '_blank')">
+                        Contactar por WhatsApp
+                    </button>
+                `;
+                
+                document.getElementById('contactModal').style.display = 'block';
+            } catch (error) {
+                mostrarNotificacion('Error al cargar información del asesor', 'error');
+            }
+        }
+
+        // ========== FUNCIÓN MEJORADA DE WHATSAPP ==========
+        
+        async function enviarPorWhatsAppMejorado(propiedadId) {
+            try {
+                const response = await fetch(`${API_BASE}/whatsapp/enviar-propiedad`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        propiedad_id: propiedadId,
+                        destino: '+527772677563' // Número por defecto
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostrarNotificacion('Mensaje enviado por WhatsApp', 'success');
+                } else {
+                    // Fallback al método anterior
+                    enviarPorWhatsApp(propiedadId);
+                }
+            } catch (error) {
+                // Fallback al método anterior
+                enviarPorWhatsApp(propiedadId);
+            }
+        }
+
+        // ========== FUNCIÓN DE ELIMINAR PROPIEDAD ==========
+        
+        async function eliminarPropiedad(propiedadId) {
+            if (!usuarioActual || usuarioActual.rol !== 'admin') {
+                mostrarNotificacion('Solo los administradores pueden eliminar propiedades', 'error');
+                return;
+            }
+
+            if (confirm('¿Estás seguro de que deseas eliminar esta propiedad?')) {
+                try {
+                    const response = await fetch(`${API_BASE}/propiedades/${propiedadId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        mostrarNotificacion('Propiedad eliminada correctamente', 'success');
+                        cargarPropiedades(); // Recargar la lista
+                    } else {
+                        mostrarNotificacion('Error al eliminar la propiedad', 'error');
+                    }
+                } catch (error) {
+                    mostrarNotificacion('Error de conexión', 'error');
+                }
+            }
+        }
+
+        // ========== FUNCIÓN DE NOTIFICACIONES ==========
+        
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = mensaje;
+            notification.className = `notification ${tipo}`;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // ========== CORREGIR APLICACIÓN DE FILTROS ==========
+        
+        // Aplicar filtros en tiempo real (CORREGIDO)
+        function aplicarFiltrosEnTiempoReal() {
+            filtrosActivos = {};
+            
+            // Búsqueda por texto - CORREGIDO para que funcione
+            const terminoBusqueda = document.getElementById('busqueda').value.trim();
+            if (terminoBusqueda.length >= 2) {
+                filtrosActivos.busqueda = terminoBusqueda;
+            }
+            
+            // Ordenamiento por precio
+            const ordenPrecio = document.getElementById('ordenar_precio').value;
+            if (ordenPrecio) {
+                filtrosActivos.orden_precio = ordenPrecio;
+            }
+            
+            // Recoger valores de filtros de checkboxes - CORREGIDOS
+            const ciudadesSeleccionadas = obtenerCheckboxesSeleccionados('ciudades-container');
+            const tiposSeleccionados = obtenerCheckboxesSeleccionados('tipos-container');
+            const operacionesSeleccionadas = obtenerCheckboxesSeleccionados('operaciones-container');
+            const amenidadesSeleccionadas = obtenerCheckboxesSeleccionados('amenidades-container');
+            const documentacionSeleccionada = obtenerCheckboxesSeleccionados('documentacion-container');
+            const caracteristicasSeleccionadas = obtenerCheckboxesSeleccionados('caracteristicas-container');
+            
+            // Recoger valores de campos de texto
+            const precioMin = document.getElementById('precio_min').value;
+            const precioMax = document.getElementById('precio_max').value;
+            
+            // Solo aplicar filtros si hay selecciones - FORMATO CORREGIDO
+            if (ciudadesSeleccionadas.length > 0) filtrosActivos.ciudad = ciudadesSeleccionadas;
+            if (tiposSeleccionados.length > 0) filtrosActivos.tipo = tiposSeleccionados;
+            if (operacionesSeleccionadas.length > 0) filtrosActivos.operacion = operacionesSeleccionadas;
+            if (amenidadesSeleccionadas.length > 0) filtrosActivos.amenidades = amenidadesSeleccionadas;
+            if (documentacionSeleccionada.length > 0) filtrosActivos.legal = documentacionSeleccionada;
+            if (caracteristicasSeleccionadas.length > 0) filtrosActivos.arquitectura = caracteristicasSeleccionadas;
+            if (precioMin) filtrosActivos.precio_min = parseInt(precioMin);
+            if (precioMax) filtrosActivos.precio_max = parseInt(precioMax);
+            
+            cargarPropiedades(1);
         }
     </script>
 </body>
