@@ -1,924 +1,2291 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Catálogo de Propiedades</title>
-  <style>
-    :root {
-      --primary-color: #234;
-      --text-color: #333;
-      --border-color: #ddd;
-      --hover-color: #f5f5f5;
-      --price-color: #059669;
-      --card-shadow: 0 2px 6px rgba(0,0,0,.1);
-      --transition: all 0.3s ease;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏡 Catálogo de Propiedades - Sistema PostgreSQL</title>
     
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
-                 "Helvetica Neue", Arial, sans-serif; 
-      background: #f5f5f5; 
-      margin: 0; 
-      padding: 0;
-      color: var(--text-color);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header con estado del sistema */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        /* Layout principal */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            min-height: calc(100vh - 140px);
+            align-items: start;
+        }
+
+        /* Panel de filtros mejorado */
+        .filters-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Checkbox groups - CORREGIDO PARA ALINEACIÓN */
+        .checkbox-group {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            background: #fafafa;
+            word-wrap: break-word;
+            text-align: left;
+            /* ALTURA LIBRE - sin max-height fijo */
+            max-height: none;
+            overflow: visible;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 0.5rem;
+            padding: 0.25rem;
+            text-align: left;
+            gap: 8px;
+            /* FORZAR MISMA LÍNEA */
+            white-space: nowrap;
+            flex-wrap: nowrap;
+        }
+
+        .checkbox-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            margin-left: 0;
+            transform: scale(1.1);
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            /* MANTENER EN LÍNEA */
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            cursor: pointer;
+            flex: 1;
+            /* TEXTO EN MISMA LÍNEA */
+            display: inline-block;
+            vertical-align: middle;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .checkbox-item:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+
+        .checkbox-item input[type="checkbox"]:checked + label {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .price-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Área de contenido */
+        .content-area {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .content-header {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-summary {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .stat-label {
+            font-weight: 500;
+            color: var(--secondary);
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1em;
+        }
+
+        .results-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .loading {
+            color: var(--warning);
+            font-style: italic;
+            display: none;
+        }
+
+        /* Grid de propiedades */
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .property-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .property-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border-color: var(--primary);
+        }
+
+        .property-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: var(--light);
+        }
+
+        .property-content {
+            padding: 1.25rem;
+        }
+
+        .property-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .property-price {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .property-location {
+            color: var(--secondary);
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .property-type {
+            background: var(--light);
+            color: var(--secondary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 0.75rem;
+        }
+
+        .property-operation {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .operation-venta {
+            background: var(--success);
+            color: white;
+        }
+
+        .operation-renta {
+            background: var(--warning);
+            color: white;
+        }
+
+        .operation-desconocido {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .property-description {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        .property-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .property-actions button {
+            flex: 1;
+            min-width: 90px;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .property-actions button:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Estilo específico para botón de WhatsApp */
+        .property-actions button.btn-whatsapp {
+            background: #25d366 !important;
+            color: white !important;
+            border-color: #25d366 !important;
+        }
+
+        .property-actions button.btn-whatsapp:hover {
+            background: #1da851 !important;
+            border-color: #1da851 !important;
+        }
+
+        /* Estados de error/vacío */
+        .message, .error {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+
+        .error {
+            color: var(--danger);
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin: 1rem;
+        }
+
+        /* Responsive */
+        @media (min-width: 1200px) {
+            .properties-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 0.5rem;
+            }
+            
+            .main-layout {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .properties-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .stats-summary {
+                gap: 1rem;
+            }
+            
+            .stat-item {
+                flex: 1;
+                min-width: 150px;
+            }
+            
+            .property-card {
+                margin-bottom: 1rem;
+            }
+        }
     
-    * { box-sizing: border-box; }
-    
-    header { 
-      background: var(--primary-color); 
-      color: #fff; 
-      padding: 1.5rem;
-      text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,.1);
-    }
-    
-    header h1 { 
-      margin: 0 0 .5rem; 
-      font-size: 2rem;
-      font-weight: 600;
-    }
-    
-    header p { 
-      margin: 0;
-      font-size: 1rem;
-      opacity: 0.9;
-    }
-    
-    main { 
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 98px);
-    }
-    
-    #filters {
-      width: 280px;
-      background: #fff;
-      padding: 1.5rem;
-      border-right: 1px solid var(--border-color);
-      overflow-y: auto;
-      flex-shrink: 0;
-    }
-    
-    #filters section { 
-      margin-bottom: 2rem;
-    }
-    
-    #filters section:last-child {
-      margin-bottom: 1rem;
-    }
-    
-    #filters section strong { 
-      display: block;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-      color: var(--text-color);
-      text-transform: capitalize;
-    }
-    
-    #filters label { 
-      display: block;
-      margin-bottom: .75rem;
-      cursor: pointer;
-      transition: var(--transition);
-      padding: .25rem;
-      border-radius: 4px;
-      text-transform: capitalize;
-    }
-    
-    #filters label:hover {
-      background: var(--hover-color);
-    }
-    
-    #filters input[type="text"],
-    #filters input[type="number"],
-    #filters select { 
-      width: 100%;
-      padding: .5rem;
-      margin-top: .5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      font-size: .9rem;
-    }
-    
-    #filters input[type="checkbox"] {
-      margin-right: .5rem;
-    }
-    
-    #cardsContainer {
-      flex: 1;
-      padding: 1.5rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 1.5rem;
-      overflow-y: auto;
-      align-content: start;
-      background: #f5f5f5;
-    }
-    
-    .card { 
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: var(--card-shadow);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: var(--transition);
-      height: fit-content;
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-    
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,.15);
-    }
-    
-    .card img { 
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      background: #eee;
-      display: block;
-      transition: var(--transition);
-    }
-    
-    .card:hover img {
-      transform: scale(1.05);
-    }
-    
-    .card-content { 
-      padding: 1.25rem;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-    }
-    
-    .card-content h3 { 
-      margin: 0 0 .5rem; 
-      font-size: 1.2rem;
-      line-height: 1.4;
-      color: var(--text-color);
-      text-transform: capitalize;
-    }
-    
-    .card-content h3 a { 
-      color: inherit;
-      text-decoration: none;
-      transition: var(--transition);
-    }
-    
-    .card-content h3 a:hover { 
-      color: var(--price-color);
-    }
-    
-    .direccion-completa {
-      font-size: 0.9rem;
-      color: #666;
-      margin: 0 0 .75rem;
-      line-height: 1.4;
-    }
-    
-    .location { 
-      font-size: .95rem;
-      color: #666;
-      margin-bottom: 1rem;
-      line-height: 1.4;
-      text-transform: capitalize;
-    }
-    
-    .price { 
-      color: var(--price-color);
-      font-weight: 600;
-      margin-bottom: 1rem;
-      font-size: 1.2rem;
-    }
-    
-    .fields { 
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: .75rem;
-      font-size: .9rem;
-      margin-bottom: 1rem;
-      color: #555;
-    }
-    
-    .fields > div {
-      padding: .5rem;
-      background: #f8f8f8;
-      border-radius: 4px;
-      text-align: center;
-    }
-    
-    details { 
-      margin-top: auto;
-      border-top: 1px solid var(--border-color);
-      padding-top: 1rem;
-    }
-    
-    details summary { 
-      cursor: pointer;
-      color: #666;
-      font-weight: 500;
-      margin-bottom: .75rem;
-      outline: none;
-    }
-    
-    details summary:hover {
-      color: var(--price-color);
-    }
-    
-    details p {
-      margin: 0;
-      font-size: .95rem;
-      line-height: 1.5;
-      color: #444;
-      max-height: 200px;
-      overflow-y: auto;
-      padding-right: 10px;
-    }
-    
-    .no-results { 
-      grid-column: 1/-1;
-      text-align: center;
-      padding: 3rem;
-      color: #666;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: var(--card-shadow);
-    }
-    
-    @media (max-width: 768px) {
-      main {
-        flex-direction: column;
-        height: auto;
-      }
-      
-      #filters {
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-      }
-      
-      #cardsContainer {
-        height: auto;
-      }
-    }
-    
-    .tipo-operacion {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      border-radius: 4px;
-      color: white;
-      font-weight: bold;
-      text-transform: uppercase;
-      font-size: 0.8rem;
-    }
-    
-    .tipo-operacion.venta {
-      background-color: #059669;
-    }
-    
-    .tipo-operacion.renta {
-      background-color: #2563eb;
-    }
-    
-    .tipo-operacion.desconocido {
-      background-color: #6b7280;
-    }
-    
-    .image-container {
-      position: relative;
-      overflow: hidden;
-    }
-  </style>
+        .checkbox-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f9fafb;
+        }
+        
+        .checkbox-item {
+            display: block;
+            margin: 5px 0;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .checkbox-item:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .checkbox-label {
+            font-size: 14px;
+            color: #374151;
+        }
+        </style>
 </head>
 <body>
-
-  <header>
-    <h1>Catálogo de Propiedades</h1>
-    <p id="resumen">Encuentra tu próxima propiedad</p>
-  </header>
-
-  <main>
-    <aside id="filters">
-      <!-- Ordenar (movido arriba) -->
-      <section>
-        <strong>⚙️ Ordenar</strong>
-        <select id="sortOrder">
-          <option value="none">Sin orden</option>
-          <option value="asc">Precio Menor a Mayor</option>
-          <option value="desc">Precio Mayor a Menor</option>
-        </select>
-      </section>
-
-      <!-- Buscar y Precio -->
-      <section>
-        <strong>🔍 Buscar</strong>
-        <input id="searchInput" type="text" placeholder="Buscar por ubicación, características..." />
-      </section>
-      <section>
-        <strong>💰 Precio</strong>
-        <label>Min <input id="precioMin" type="number" placeholder="0"></label>
-        <label>Max <input id="precioMax" type="number" placeholder="∞"></label>
-      </section>
-
-      <!-- Ciudad dinámico -->
-      <section>
-        <strong>🌍 Ciudad</strong>
-        <div id="filterCiudad"></div>
-      </section>
-
-      <!-- Operación -->
-      <section>
-        <strong>🤝 Operación</strong>
-        <label><input type="checkbox" name="operacion" value="Venta"> Venta (<span id="countVenta">0</span>)</label>
-        <label><input type="checkbox" name="operacion" value="Renta"> Renta (<span id="countRenta">0</span>)</label>
-      </section>
-
-      <!-- Tipo de Propiedad -->
-      <section>
-        <strong>🏠 Tipo de Propiedad</strong>
-        <div id="filterTipoPropiedad"></div>
-      </section>
-
-      <!-- Amenidades -->
-      <section>
-        <strong>✨ Amenidades</strong>
-        <div id="filterAmenidades"></div>
-      </section>
-
-      <!-- Características -->
-      <section>
-        <strong>📋 Características</strong>
-        <div id="filterCaracteristicas"></div>
-      </section>
-
-      <!-- Propiedad con -->
-      <section>
-        <strong>🏷️ Propiedad con</strong>
-        <label><input type="checkbox" name="escrituras" value="true"> Escrituras (<span id="countEscrituras">0</span>)</label>
-        <label><input type="checkbox" name="cesion_derechos" value="true"> Cesión de derecho (<span id="countCesion">0</span>)</label>
-      </section>
-    </aside>
-
-    <section id="cardsContainer"></section>
-  </main>
-
-  <script>
-    let propiedades = [];
-    let filtrosActivos = {
-      texto: '',
-      precioMin: null,
-      precioMax: null,
-      operacion: [],
-      tipoPropiedad: [],
-      ciudad: [],
-      amenidades: [],
-      caracteristicas: [],
-      escrituras: false,
-      cesionDerechos: false
-    };
-
-    // Función para formatear precios
-    function formatearPrecio(precioData) {
-      if (!precioData) return 'Precio no disponible';
-      
-      // Si es un objeto con la estructura esperada
-      if (typeof precioData === 'object') {
-        // Si tiene texto, usarlo directamente
-        if (precioData.texto) {
-          return precioData.texto;
-        }
-        
-        // Si tiene valor
-        if (precioData.valor) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-          }).format(precioData.valor);
-        }
-      }
-      
-      // Si es un string o número directo
-      if (typeof precioData === 'string' || typeof precioData === 'number') {
-        const valor = parseFloat(String(precioData).replace(/[^0-9]/g, ''));
-        if (!isNaN(valor)) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-          }).format(valor);
-        }
-        return precioData;
-      }
-      
-      return 'Precio no disponible';
-    }
-
-    // Función para extraer valor numérico del precio
-    function extraerValorPrecio(precioData) {
-      if (!precioData) return 0;
-      
-      if (typeof precioData === 'object') {
-        if (precioData.valor) {
-          return precioData.valor;
-        }
-        if (precioData.texto) {
-          return parseFloat(String(precioData.texto).replace(/[^0-9]/g, '')) || 0;
-        }
-      }
-      
-      if (typeof precioData === 'string' || typeof precioData === 'number') {
-        return parseFloat(String(precioData).replace(/[^0-9]/g, '')) || 0;
-      }
-      
-      return 0;
-    }
-
-    // Cargar datos
-    async function cargarDatos() {
-      try {
-        const timestamp = new Date().getTime();
-        const response = await fetch(`resultados/propiedades_estructuradas.json?t=${timestamp}`);
-        const data = await response.json();
-        propiedades = data.propiedades;
-        
-        // Inicializar la interfaz
-        inicializarFiltros();
-        mostrarPropiedades();
-        actualizarResumen();
-      } catch (error) {
-        console.error('Error cargando datos:', error);
-      }
-    }
-
-    function inicializarFiltros() {
-      // Inicializar ciudades
-      const ciudades = [...new Set(propiedades.map(p => p.ubicacion?.ciudad).filter(Boolean))];
-      const filterCiudad = document.getElementById('filterCiudad');
-      ciudades.forEach(ciudad => {
-        const count = propiedades.filter(p => p.ubicacion?.ciudad === ciudad).length;
-        filterCiudad.innerHTML += `
-          <label>
-            <input type="checkbox" name="ciudad" value="${ciudad}"> 
-            ${ciudad} (${count})
-          </label>
-        `;
-      });
-
-      // Inicializar tipos de propiedad
-      const tiposPropiedad = [...new Set(propiedades.map(p => p.propiedad?.tipo_propiedad).filter(Boolean))];
-      const filterTipoPropiedad = document.getElementById('filterTipoPropiedad');
-      tiposPropiedad.sort().forEach(tipo => {
-        const count = propiedades.filter(p => p.propiedad?.tipo_propiedad === tipo).length;
-        const tipoMostrado = tipo.replace(/_/g, ' ');
-        filterTipoPropiedad.innerHTML += `
-          <label>
-            <input type="checkbox" name="tipoPropiedad" value="${tipo}"> 
-            ${tipoMostrado} (${count})
-          </label>
-        `;
-      });
-
-      // Inicializar amenidades
-      const amenidadesComunes = ['alberca', 'jardin', 'estacionamiento', 'areas_comunes'];
-      const filterAmenidades = document.getElementById('filterAmenidades');
-      amenidadesComunes.forEach(amenidad => {
-        const count = propiedades.filter(p => {
-          if (!p.amenidades) return false;
-          const amenidadObj = p.amenidades[amenidad];
-          return amenidadObj && (
-            amenidadObj.presente === true ||
-            amenidadObj.presentes === true ||
-            (Array.isArray(amenidadObj.tipos) && amenidadObj.tipos.length > 0)
-          );
-        }).length;
-        const amenidadMostrada = amenidad.replace(/_/g, ' ');
-        filterAmenidades.innerHTML += `
-          <label>
-            <input type="checkbox" name="amenidades" value="${amenidad}"> 
-            ${amenidadMostrada} (${count})
-          </label>
-        `;
-      });
-
-      // Inicializar características
-      const caracteristicasComunes = ['recamara_planta_baja', 'un_nivel', 'opcion_crecer'];
-      const filterCaracteristicas = document.getElementById('filterCaracteristicas');
-      caracteristicasComunes.forEach(caracteristica => {
-        // Contar solo propiedades que son estrictamente de un nivel
-        const count = caracteristica === 'un_nivel' ?
-          propiedades.filter(p => 
-            p.caracteristicas && 
-            p.caracteristicas[caracteristica] === true && 
-            (!p.caracteristicas.niveles || p.caracteristicas.niveles === 1) &&
-            !p.caracteristicas.tiene_planta_alta
-          ).length :
-          propiedades.filter(p => p.caracteristicas && p.caracteristicas[caracteristica] === true).length;
-        
-        const caracteristicaMostrada = caracteristica.replace(/_/g, ' ');
-        filterCaracteristicas.innerHTML += `
-          <label>
-            <input type="checkbox" name="caracteristicas" value="${caracteristica}"> 
-            ${caracteristicaMostrada} (${count})
-          </label>
-        `;
-      });
-
-      // Actualizar contadores de escrituras y cesión
-      document.getElementById('countEscrituras').textContent = 
-        propiedades.filter(p => p.legal && p.legal.escrituras === true).length;
-      document.getElementById('countCesion').textContent = 
-        propiedades.filter(p => p.legal && p.legal.cesion_derechos === true).length;
-
-      // Inicializar eventos de filtros
-      document.getElementById('searchInput').addEventListener('input', (e) => {
-        filtrosActivos.texto = e.target.value.toLowerCase();
-        mostrarPropiedades();
-      });
-
-      document.getElementById('precioMin').addEventListener('input', (e) => {
-        filtrosActivos.precioMin = e.target.value ? parseFloat(e.target.value) : null;
-        mostrarPropiedades();
-      });
-
-      document.getElementById('precioMax').addEventListener('input', (e) => {
-        filtrosActivos.precioMax = e.target.value ? parseFloat(e.target.value) : null;
-        mostrarPropiedades();
-      });
-
-      // Eventos para checkboxes
-      document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-          const tipo = e.target.name;
-          const valor = e.target.value;
-          
-          switch(tipo) {
-            case 'operacion':
-              if (e.target.checked) {
-                filtrosActivos.operacion.push(valor);
-              } else {
-                filtrosActivos.operacion = filtrosActivos.operacion.filter(v => v !== valor);
-              }
-              break;
-            case 'tipoPropiedad':
-              if (e.target.checked) {
-                filtrosActivos.tipoPropiedad.push(valor);
-              } else {
-                filtrosActivos.tipoPropiedad = filtrosActivos.tipoPropiedad.filter(v => v !== valor);
-              }
-              break;
-            case 'ciudad':
-              if (e.target.checked) {
-                filtrosActivos.ciudad.push(valor);
-              } else {
-                filtrosActivos.ciudad = filtrosActivos.ciudad.filter(v => v !== valor);
-              }
-              break;
-            case 'amenidades':
-              if (e.target.checked) {
-                filtrosActivos.amenidades.push(valor);
-              } else {
-                filtrosActivos.amenidades = filtrosActivos.amenidades.filter(v => v !== valor);
-              }
-              break;
-            case 'caracteristicas':
-              if (e.target.checked) {
-                filtrosActivos.caracteristicas.push(valor);
-              } else {
-                filtrosActivos.caracteristicas = filtrosActivos.caracteristicas.filter(v => v !== valor);
-              }
-              break;
-            case 'escrituras':
-              filtrosActivos.escrituras = e.target.checked;
-              break;
-            case 'cesion_derechos':
-              filtrosActivos.cesionDerechos = e.target.checked;
-              break;
-          }
-          
-          mostrarPropiedades();
-        });
-      });
-
-      // Ordenamiento
-      document.getElementById('sortOrder').addEventListener('change', e => {
-        mostrarPropiedades();
-      });
-    }
-
-    function actualizarResumen() {
-      try {
-        const totalPropiedades = propiedades.length;
-        const resumen = document.getElementById('resumen');
-        
-        if (!resumen) {
-          console.error('Elemento resumen no encontrado en el DOM');
-          return;
-        }
-        
-        resumen.textContent = `${totalPropiedades} propiedades disponibles`;
-      } catch (error) {
-        console.error('Error actualizando resumen:', error);
-      }
-    }
-
-    function filtrarPropiedades() {
-      return propiedades.filter(propiedad => {
-        try {
-          // Filtro de texto
-            const textoPropiedad = `
-              ${propiedad.titulo || ''} 
-              ${propiedad.descripcion_original || ''} 
-              ${propiedad.ubicacion?.ciudad || ''}
-            `.toLowerCase();
-            
-          if (filtrosActivos.texto && !textoPropiedad.includes(filtrosActivos.texto)) return false;
-
-          // Filtro de precio
-          if (propiedad.propiedad?.precio) {
-            const precio = extraerValorPrecio(propiedad.propiedad.precio);
-            if (precio > 0) {
-              if (filtrosActivos.precioMin && precio < filtrosActivos.precioMin) return false;
-              if (filtrosActivos.precioMax && precio > filtrosActivos.precioMax) return false;
-            }
-          }
-
-          // Filtro de tipo de operación
-          if (filtrosActivos.operacion.length > 0) {
-            if (!filtrosActivos.operacion.includes(propiedad.propiedad?.tipo_operacion)) return false;
-          }
-
-          // Filtro de tipo de propiedad
-          if (filtrosActivos.tipoPropiedad.length > 0) {
-            if (!filtrosActivos.tipoPropiedad.includes(propiedad.propiedad?.tipo_propiedad)) return false;
-          }
-
-          // Filtro de ciudad
-          if (filtrosActivos.ciudad.length > 0) {
-            if (!filtrosActivos.ciudad.includes(propiedad.ubicacion?.ciudad)) return false;
-          }
-
-          // Filtro de amenidades
-          if (filtrosActivos.amenidades.length > 0) {
-            const tieneAmenidad = filtrosActivos.amenidades.every(amenidad => {
-              if (!propiedad.amenidades) return false;
-              const amenidadObj = propiedad.amenidades[amenidad];
-              return amenidadObj && (
-                amenidadObj.presente === true ||
-                amenidadObj.presentes === true ||
-                (Array.isArray(amenidadObj.tipos) && amenidadObj.tipos.length > 0) ||
-                (Array.isArray(amenidadObj.detalles) && amenidadObj.detalles.length > 0)
-              );
-            });
-            if (!tieneAmenidad) return false;
-          }
-
-          // Filtro de características
-          if (filtrosActivos.caracteristicas.length > 0) {
-            const tieneCaracteristica = filtrosActivos.caracteristicas.every(caracteristica => {
-              if (caracteristica === 'un_nivel') {
-                // Verificar que la propiedad sea estrictamente de un nivel
-                return propiedad.caracteristicas && 
-                       propiedad.caracteristicas.un_nivel === true &&
-                       (!propiedad.caracteristicas.niveles || propiedad.caracteristicas.niveles === 1) &&
-                       !propiedad.caracteristicas.tiene_planta_alta;
-              }
-              return propiedad.caracteristicas && propiedad.caracteristicas[caracteristica] === true;
-            });
-            if (!tieneCaracteristica) return false;
-          }
-
-          // Filtro de escrituras
-          if (filtrosActivos.escrituras) {
-            if (!propiedad.legal || propiedad.legal.escrituras !== true) return false;
-          }
-
-          // Filtro de cesión de derechos
-          if (filtrosActivos.cesionDerechos) {
-            if (!propiedad.legal || propiedad.legal.cesion_derechos !== true) return false;
-          }
-
-          return true;
-        } catch (error) {
-          console.error('Error filtrando propiedad:', error);
-          return false;
-        }
-      });
-    }
-
-    function mostrarPropiedades() {
-      const propiedadesFiltradas = filtrarPropiedades();
-      const container = document.getElementById('cardsContainer');
-      container.innerHTML = '';
-      
-      console.log('Total de propiedades filtradas:', propiedadesFiltradas.length);
-      
-      if (propiedadesFiltradas.length === 0) {
-        container.innerHTML = `
-          <div class="no-results">
-            <h3>No se encontraron propiedades</h3>
-            <p>Intenta ajustar los filtros de búsqueda</p>
-          </div>
-        `;
-        return;
-      }
-      
-      // Mostrar ejemplo de una propiedad para depuración
-      console.log('Ejemplo de propiedad filtrada:', JSON.stringify(propiedadesFiltradas[0], null, 2));
-      console.log('Dirección de la primera propiedad:', propiedadesFiltradas[0]?.ubicacion?.direccion_completa);
-      
-      // Ordenar propiedades según el criterio seleccionado
-      const sortOrder = document.getElementById('sortOrder').value;
-      if (sortOrder !== 'none') {
-        propiedadesFiltradas.sort((a, b) => {
-          const precioA = extraerValorPrecio(a.propiedad?.precio);
-          const precioB = extraerValorPrecio(b.propiedad?.precio);
-          return sortOrder === 'asc' ? precioA - precioB : precioB - precioA;
-        });
-      }
-      
-      propiedadesFiltradas.forEach(propiedad => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        
-        // Obtener la imagen de portada
-        let imagenUrl = 'resultados/Imagen_no_disponible.jpg';
-        if (propiedad.datos_originales?.imagen_portada) {
-          imagenUrl = 'resultados/' + propiedad.datos_originales.imagen_portada.ruta_relativa;
-        } else if (propiedad.datos_originales?.imagenes && propiedad.datos_originales.imagenes.length > 0) {
-          const primeraImagen = propiedad.datos_originales.imagenes[0];
-          imagenUrl = primeraImagen.ruta_relativa ? 'resultados/' + primeraImagen.ruta_relativa : primeraImagen;
-        }
-        
-        // Capitalizar el título y usar un título por defecto si no existe
-        const tipoPropiedad = propiedad.propiedad?.tipo_propiedad ? 
-          propiedad.propiedad.tipo_propiedad.replace(/_/g, ' ') : '';
-        const titulo = tipoPropiedad ? 
-          `${tipoPropiedad} en ${propiedad.ubicacion?.ciudad || ''}` :
-          'Propiedad';
-        
-        // Formatear precio
-        const precio = formatearPrecio(propiedad.propiedad?.precio, determinarTipoOperacion(propiedad));
-        const tipoOperacion = determinarTipoOperacion(propiedad);
-        
-        // Crear el contenido de la tarjeta
-        card.innerHTML = `
-          <div class="image-container">
-            <a href="${propiedad.link}" target="_blank">
-              <img src="${imagenUrl}" alt="${titulo}" onerror="this.src='resultados/Imagen_no_disponible.jpg'">
-            </a>
-            <div class="tipo-operacion ${tipoOperacion.toLowerCase()}">${tipoOperacion}</div>
-          </div>
-          <div class="card-content">
-            <h3>
-              ${propiedad.link ? 
-                `<a href="${propiedad.link}" target="_blank" rel="noopener noreferrer">
-                  ${titulo}
-                </a>` : 
-                titulo
-              }
-            </h3>
-            <p class="direccion-completa">📍 ${propiedad.ubicacion?.direccion_completa || ''}</p>
-            <div class="price">${precio}</div>
-            <div class="fields">
-              ${propiedad.caracteristicas?.recamaras ? 
-                `<div>🛏️ ${propiedad.caracteristicas.recamaras} Rec</div>` : ''}
-              ${propiedad.caracteristicas?.banos ? 
-                `<div>🚿 ${propiedad.caracteristicas.banos} Baños</div>` : ''}
-              ${propiedad.caracteristicas?.superficie_m2 ? 
-                `<div>📏 ${propiedad.caracteristicas.superficie_m2}m²</div>` : ''}
-              ${propiedad.caracteristicas?.estacionamientos?.cantidad ? 
-                `<div>🚗 ${propiedad.caracteristicas.estacionamientos.cantidad} Est</div>` : ''}
+    <!-- Header con estado del sistema -->
+    <div class="header">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>🏡 Catálogo de Propiedades</h1>
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 0.2rem;">
+                        📦 <strong>Versión PostgreSQL 3.0.0</strong> | 🔥 Sistema de Gestión Avanzada | 🛡️ API PostgreSQL | ⚡ Optimizado
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="verFavoritos()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                        ⭐ Mis Favoritos
+                    </button>
+                    <button onclick="sistemaColaborativo.reabrirLogin()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);">
+                        👥 Sistema Colaborativo
+                    </button>
+                </div>
             </div>
-            <details>
-              <summary>Ver descripción</summary>
-              <p>${propiedad.descripcion_original || 'No hay descripción disponible'}</p>
-            </details>
-          </div>
-        `;
+            <div class="header-info">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>API: <span id="api-status">Verificando...</span></span>
+                </div>
+                <div class="status-indicator">
+                    <span>🏠 Total: <span id="total-propiedades">-</span> propiedades</span>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat">
+                    <span>📊 Mostrando: <span id="mostrando">-</span></span>
+                </div>
+                <div class="stat">
+                    <span>📄 Página: <span id="pagina-actual">-</span></span>
+                </div>
+                <div class="stat">
+                    <span>⚡ Carga: <span id="tiempo-carga">-</span>ms</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-layout">
+            <!-- Panel de filtros -->
+            <div class="filters-panel">
+                <div class="filters-header">
+                    <h3>Filtros</h3>
+                </div>
+                
+                <button class="btn btn-small btn-secondary" onclick="limpiarFiltros()" style="width: 100%; margin-bottom: 1rem;">Limpiar Filtros</button>
+
+                <!-- Filtro de ordenamiento de precios -->
+                <!-- Búsqueda -->
+                <div class="filter-group">
+                    <label for="busqueda">🔍 Buscar</label>
+                    <input type="text" id="busqueda" placeholder="Buscar propiedades..." 
+                           style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
+                           oninput="aplicarFiltros()">
+                </div>
+
+                <!-- Rango de Precios -->
+                <div class="filter-group">
+                    <label>💰 Rango de Precio</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="number" id="precio_min" placeholder="Precio mínimo" 
+                               style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;"
+                               onchange="aplicarFiltros()">
+                        <input type="number" id="precio_max" placeholder="Precio máximo" 
+                               style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;"
+                               onchange="aplicarFiltros()">
+                    </div>
+                </div>
+
+                <!-- Ordenamiento -->
+                <div class="filter-group">
+                    <label>📊 Ordenar por Precio</label>
+                    <select id="ordenar_precio" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;" onchange="aplicarFiltros()">
+                        <option value="">Sin ordenar</option>
+                        <option value="asc">Menor a mayor</option>
+                        <option value="desc">Mayor a menor</option>
+                    </select>
+                </div>
+
+                <!-- Operaciones -->
+                <div class="filter-group">
+                    <label>🏠 Operación</label>
+                    <div id="operaciones-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Ciudades -->
+                <div class="filter-group">
+                    <label>📍 Ciudad</label>
+                    <div id="ciudades-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Tipos de Propiedad -->
+                <div class="filter-group">
+                    <label>🏡 Tipo de Propiedad</label>
+                    <div id="tipos-container" class="checkbox-group"></div>
+                </div>
+
+                
+                <!-- Filtros Numéricos Independientes -->
+                <div class="filter-group">
+                    <label>🛏️ Recámaras</label>
+                    <div id="recamaras-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Baños -->
+                <div class="filter-group">
+                    <label>🚿 Baños</label>
+                    <div id="banos-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Estacionamientos -->
+                <div class="filter-group">
+                    <label>🚗 Estacionamientos</label>
+                    <div id="estacionamientos-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Superficie -->
+                <div class="filter-group">
+                    <label>📐 Superficie (m²)</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="number" id="superficie_min" placeholder="Min m²" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;" onchange="aplicarFiltros()">
+                        <input type="number" id="superficie_max" placeholder="Max m²" style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;" onchange="aplicarFiltros()">
+                    </div>
+                </div>
+<!-- Amenidades -->
+                <div class="filter-group">
+                    <label>✨ Amenidades</label>
+                    <div id="amenidades-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Características Arquitectónicas - SEPARADAS -->
+                <div class="filter-group">
+                    <label>🛏️ Recámaras</label>
+                    <div id="recamaras-container" class="checkbox-group"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label>🚿 Baños</label>
+                    <div id="banos-container" class="checkbox-group"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label>🚗 Estacionamientos</label>
+                    <div id="estacionamientos-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Documentación Legal -->
+                <div class="filter-group">
+                    <label>📋 Documentación</label>
+                    <div id="documentacion-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Características Adicionales -->
+                <div class="filter-group">
+                    <label>🏠 Características Especiales</label>
+                    <div id="caracteristicas-adicionales-container" class="checkbox-group"></div>
+                </div>
+
+                <!-- Botones de Control -->
+                <div class="filter-group" style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="por_pagina" style="width: 80px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem;" onchange="aplicarFiltros()">
+                            <option value="24">24</option>
+                            <option value="60">60</option>
+                            <option value="120">120</option>
+                            <option value="200">200</option>
+                            <option value="500">Todas</option>
+                        </select>
+                        <label style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center;">por página</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área de contenido -->
+            <div class="content-area">
+                <div class="content-header">
+                    <div class="stats-summary">
+                        <div class="stat-item">
+                            <span class="stat-label">🏠 En Venta:</span>
+                            <span class="stat-value" id="count-venta">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">🏢 En Renta:</span>
+                            <span class="stat-value" id="count-renta">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">📅 Actualizado:</span>
+                            <span class="stat-value" id="fecha-actualizacion">-</span>
+                        </div>
+                    </div>
+                    <div class="results-info">
+                        <span id="info-resultados">Cargando...</span>
+                        <span class="loading" id="loading">⏳ Cargando...</span>
+                    </div>
+                </div>
+
+                <div class="properties-grid" id="properties-container">
+                    <div class="message">Cargando propiedades...</div>
+                </div>
+
+                <div id="pagination" style="text-align: center; padding: 20px; display: none;">
+                    <button onclick="cambiarPagina(-1)" id="prev-btn" class="btn btn-secondary" style="margin: 5px;">← Anterior</button>
+                    <span id="page-info" style="margin: 0 20px; font-weight: bold;">Página 1 de 1</span>
+                    <button onclick="cambiarPagina(1)" id="next-btn" class="btn btn-secondary" style="margin: 5px;">Siguiente →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const API_BASE = 'http://localhost:8000';
+        let allProperties = [];
+        let filteredProperties = [];
+        let currentPage = 1;
+        let propertiesPerPage = 24;
         
-        container.appendChild(card);
-      });
-      
-      // Actualizar contadores
-      actualizarContadores();
-      
-      // Actualizar resumen
-      document.getElementById('resumen').textContent = 
-        `Mostrando ${propiedadesFiltradas.length} de ${propiedades.length} propiedades`;
-    }
+        // Función para mostrar mensaje de depuración
+        function showDebugInfo(message) {
+            console.log('DEBUG:', message);
+        }
 
-    function actualizarContadores() {
-      // Actualizar contadores de operación
-      document.getElementById('countVenta').textContent = 
-        propiedades.filter(p => p.propiedad?.tipo_operacion?.toLowerCase() === 'venta').length;
-      document.getElementById('countRenta').textContent = 
-        propiedades.filter(p => p.propiedad?.tipo_operacion?.toLowerCase() === 'renta').length;
+        // Cargar datos al iniciar
+        async function loadProperties() {
+            try {
+                showDebugInfo('Iniciando carga de propiedades...');
+                document.getElementById('loading').style.display = 'inline';
+                document.getElementById('api-status').textContent = 'Conectando...';
+                
+                const tiempoInicio = Date.now();
+                
+                // Cargar propiedades desde PostgreSQL (máximo 100 por página)
+                const response = await fetch(`${API_BASE}/propiedades?por_pagina=500`);
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                allProperties = data.propiedades || [];
+                
+                showDebugInfo(`Propiedades cargadas: ${allProperties.length}`);
+                if (allProperties.length > 0) {
+                    showDebugInfo('Primera propiedad:', allProperties[0]);
+                    showDebugInfo('Estructura datos recibidos:', data);
+                } else {
+                    showDebugInfo('No se recibieron propiedades. Datos completos:', data);
+                }
+                
+                // Cargar estadísticas y filtros
+                await cargarEstadisticasYFiltros();
+                
+                const statsResponse = await fetch(`${API_BASE}/estadisticas`);
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    showDebugInfo('[CONTADORES] Estadísticas para contadores:', stats);
+                    
+                    const totalElement = document.getElementById('total-propiedades');
+                    const ventaElement = document.getElementById('count-venta');
+                    const rentaElement = document.getElementById('count-renta');
+                    
+                    if (totalElement) {
+                        totalElement.textContent = stats.total || allProperties.length;
+                        showDebugInfo(`[CONTADORES] Total propiedades: ${stats.total || allProperties.length}`);
+                    } else {
+                        showDebugInfo('[CONTADORES] ERROR: No se encontró elemento total-propiedades');
+                    }
+                    
+                    if (ventaElement) {
+                        ventaElement.textContent = stats.por_tipo_operacion?.Venta || 0;
+                        showDebugInfo(`[CONTADORES] Ventas: ${stats.por_tipo_operacion?.Venta || 0}`);
+                    } else {
+                        showDebugInfo('[CONTADORES] ERROR: No se encontró elemento count-venta');
+                    }
+                    
+                    if (rentaElement) {
+                        rentaElement.textContent = stats.por_tipo_operacion?.Renta || 0;
+                        showDebugInfo(`[CONTADORES] Rentas: ${stats.por_tipo_operacion?.Renta || 0}`);
+                    } else {
+                        showDebugInfo('[CONTADORES] ERROR: No se encontró elemento count-renta');
+                    }
+                } else {
+                    showDebugInfo('[CONTADORES] Error obteniendo estadísticas adicionales');
+                }
+                
+                filteredProperties = [...allProperties];
+                
+                // Actualizar UI
+                const tiempoFinal = Date.now() - tiempoInicio;
+                document.getElementById('api-status').textContent = 'Conectado';
+                document.getElementById('tiempo-carga').textContent = tiempoFinal;
+                document.getElementById('fecha-actualizacion').textContent = new Date().toLocaleDateString();
+                document.getElementById('loading').style.display = 'none';
+                
+                // Llenar filtros dinámicos
+                llenarFiltros();
+                displayProperties();
+                
+                showDebugInfo('Carga completada exitosamente');
+                
+            } catch (error) {
+                console.error('Error cargando propiedades:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('api-status').textContent = 'Error';
+                document.getElementById('properties-container').innerHTML = `
+                    <div class="error">
+                        <h3>❌ Error cargando propiedades</h3>
+                        <p>${error.message}</p>
+                        <p>Asegúrate de que la API PostgreSQL esté corriendo en <code>http://localhost:8000</code></p>
+                        <button onclick="loadProperties()" class="btn" style="margin-top: 10px;">🔄 Reintentar</button>
+                    </div>
+                `;
+            }
+        }
 
-      // Actualizar contadores de escrituras y cesión
-      document.getElementById('countEscrituras').textContent = 
-        propiedades.filter(p => p.legal && p.legal.escrituras === true).length;
-      document.getElementById('countCesion').textContent = 
-        propiedades.filter(p => p.legal && p.legal.cesion_derechos === true).length;
+        function displayProperties() {
+            const container = document.getElementById('properties-container');
+            if (!container) {
+                showDebugInfo('ERROR: No se encontró el contenedor properties-container');
+                return;
+            }
+            
+            const startIndex = (currentPage - 1) * propertiesPerPage;
+            const endIndex = startIndex + propertiesPerPage;
+            const pageProperties = filteredProperties.slice(startIndex, endIndex);
+            
+            showDebugInfo(`[DISPLAY] Total propiedades: ${allProperties.length}, Filtradas: ${filteredProperties.length}, Página: ${currentPage}, Por página: ${propertiesPerPage}`);
+            showDebugInfo(`[DISPLAY] Mostrando propiedades ${startIndex + 1}-${Math.min(endIndex, filteredProperties.length)} de ${filteredProperties.length}`);
+            
+            container.innerHTML = '';
+            
+            if (pageProperties.length === 0) {
+                const mensaje = `<div class="message">
+                    <h3>No se encontraron propiedades</h3>
+                    <p>Total propiedades: ${allProperties.length}</p>
+                    <p>Propiedades filtradas: ${filteredProperties.length}</p>
+                    <p>Página actual: ${currentPage}</p>
+                    <p>Por página: ${propertiesPerPage}</p>
+                    <button onclick="location.reload()" class="btn">🔄 Recargar página</button>
+                </div>`;
+                container.innerHTML = mensaje;
+                showDebugInfo('[DISPLAY] No hay propiedades para mostrar');
+                return;
+            }
+            
+            pageProperties.forEach((property, index) => {
+                const card = createPropertyCard(property, startIndex + index);
+                container.appendChild(card);
+            });
+            
+            updatePagination();
+            updateResultsInfo();
+        }
 
-      // Actualizar contadores de amenidades
-      document.querySelectorAll('#filterAmenidades input[type="checkbox"]').forEach(checkbox => {
-        const amenidad = checkbox.value;
-        const count = propiedades.filter(p => {
-          if (!p.amenidades) return false;
-          const amenidadObj = p.amenidades[amenidad];
-          return amenidadObj && (
-            amenidadObj.presente === true ||
-            amenidadObj.presentes === true ||
-            (Array.isArray(amenidadObj.tipos) && amenidadObj.tipos.length > 0)
-          );
-        }).length;
+        function createPropertyCard(property, index) {
+            const div = document.createElement('div');
+            div.className = 'property-card';
+            div.onclick = () => {
+                if (property.link) {
+                    window.open(property.link, '_blank');
+                }
+            };
+            
+            // Extraer datos de forma segura
+            const tituloOriginal = property.titulo || 'Sin título';
+            const tipoPropiedad = property.tipo_propiedad || 'Propiedad';
+            const ciudad = property.ciudad || 'Ubicación no especificada';
+            const titulo = `${tipoPropiedad} en ${ciudad}`;
+            const precio = formatPrice(property.precio);
+            const ubicacion = getLocation(property);
+            const imagen = property.imagen_url;
+            const tipoOperacion = property.tipo_operacion || 'Sin especificar';
+            
+            showDebugInfo(`Creando tarjeta para: ${titulo} - ${precio} - ${ubicacion}`);
+            
+            div.innerHTML = `
+                <div class="property-operation operation-${tipoOperacion.toLowerCase()}">${tipoOperacion}</div>
+                <img src="${imagen}" alt="${titulo}" class="property-image" 
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMyMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNDQgODBIMTc2VjExMkgxNDRWODBaIiBmaWxsPSIjRDFENURCIi8+CjxwYXRoIGQ9Ik0xMjAgMTA0SDE0NFYxMjhIMTIwVjEwNFoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+UmVjdCB3aWR0aD0iMzIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI0YzRjRGNiIvPgo8L3N2Zz4='"
+                />
+                
+                <div class="property-content">
+                    <h3 class="property-title">${titulo}</h3>
+                    <div class="property-price">${precio}</div>
+                    <div class="property-location">📍 ${ubicacion}</div>
+                    
+                    <button onclick="event.stopPropagation(); toggleDescription('${property.id}')" style="width: 100%; margin: 10px 0; padding: 0.75rem 1.5rem; background: white; border: 1px solid #2563eb; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #2563eb; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 500;" id="btn-${property.id}">
+                        📄 Ver descripción
+                    </button>
+                    
+                    <div class="property-description" id="desc-${property.id}" style="display: none; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 0.9rem; color: #666;">
+                        ${property.descripcion || 'No hay descripción disponible.'}
+                    </div>
+                    
+                    <div class="property-actions">
+                        <button onclick="event.stopPropagation(); agregarAFavoritos('${property.id}')">⭐ Me Gusta</button>
+                        <button onclick="event.stopPropagation(); marcarNoDisponible('${property.id}')">❌ No Disponible</button>
+                        <button onclick="event.stopPropagation(); eliminarPropiedad('${property.id}')">🗑️ Borrar</button>
+                        <button onclick="event.stopPropagation(); mostrarContacto('${property.id}')" style="background: #10b981; color: white;">📞 Contacto</button>
+                        <button onclick="event.stopPropagation(); enviarPorWhatsApp('${property.id}')" class="btn-whatsapp">📱 WhatsApp</button>
+                    </div>
+                </div>
+            `;
+            
+            return div;
+        }
+
+        function formatPrice(precio) {
+            if (!precio || precio === 0) return 'Precio a consultar';
+            
+            if (typeof precio === 'string') {
+                precio = parseFloat(precio.replace(/[^0-9.-]+/g, ''));
+            }
+            
+            // NO REDONDEAR - mostrar precio completo
+            return `$${precio.toLocaleString('es-MX')}`;
+        }
+
+        function getLocation(property) {
+            const ubicaciones = [
+                property.ciudad,
+                property.estado,
+                property.colonia,
+                property.direccion
+            ].filter(Boolean);
+            
+            // Capitalizar primera letra de cada parte
+            const ubicacionesCapitalizadas = ubicaciones.map(ubicacion => {
+                if (!ubicacion) return '';
+                return ubicacion.charAt(0).toUpperCase() + ubicacion.slice(1).toLowerCase();
+            });
+            
+            return ubicacionesCapitalizadas.join(', ') || 'Ubicación no especificada';
+        }
+
+        function llenarFiltros() {
+            // Los filtros ahora se llenan desde cargarEstadisticasYFiltros() con checkboxes
+            // Esta función se mantiene para compatibilidad pero ya no es necesaria
+            showDebugInfo('Filtros cargados desde API con checkboxes');
+        }
+
+        // Función para formatear texto de filtros
+        function formatearTextoFiltro(texto) {
+            const mapeoCaracteristicas = {
+                'un_nivel': 'Un Nivel',
+                'recamara_en_pb': 'Recámara en Planta Baja',
+                'cisterna': 'Cisterna',
+                'recamaras_1': '1 Recámara',
+                'recamaras_2': '2 Recámaras',
+                'recamaras_3': '3 Recámaras',
+                'recamaras_4': '4+ Recámaras',
+                'banos_1': '1 Baño',
+                'banos_2': '2+ Baños',
+                'estacionamiento': 'Con Estacionamiento',
+                'alberca': 'Alberca',
+                'jardin': 'Jardín',
+                'seguridad': 'Seguridad 24h',
+                'garage': 'Garage',
+                'escrituras': 'Con Escrituras',
+                'cesion': 'Cesión Derechos'
+            };
+            
+            if (mapeoCaracteristicas[texto]) {
+                return mapeoCaracteristicas[texto];
+            }
+            
+            return texto
+                .replace(/_/g, ' ')
+                .split(' ')
+                .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        // Poblar checkboxes con contadores
+        function poblarCheckboxesConContadores(containerId, datos) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                showDebugInfo(`[FILTROS] ERROR: No se encontró contenedor ${containerId}`);
+                return;
+            }
+            
+            showDebugInfo(`[FILTROS] Poblando ${containerId} con ${Object.keys(datos).length} elementos`);
+            
+            container.innerHTML = '';
+            
+            const nameMapping = {
+                'operaciones-container': 'operacion',
+                'ciudades-container': 'ciudad',
+                'tipos-container': 'tipo',
+                'amenidades-container': 'amenidad',
+                'documentacion-container': 'documentacion',
+                'caracteristicas-container': 'arquitectura'
+            };
+            
+            const nameAttribute = nameMapping[containerId] || 'filtro';
+            
+            let elementosCreados = 0;
+            Object.entries(datos).forEach(([clave, valor]) => {
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'checkbox-item';
+                checkboxItem.style.cssText = `
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: flex-start; 
+                    margin-bottom: 0.5rem; 
+                    padding: 0.25rem; 
+                    text-align: left; 
+                    gap: 8px;
+                `;
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `${containerId}-${clave}`;
+                checkbox.name = nameAttribute;
+                checkbox.value = clave;
+                checkbox.addEventListener('change', aplicarFiltros);
+                checkbox.style.cssText = `
+                    margin: 0; 
+                    flex-shrink: 0; 
+                    width: 16px; 
+                    height: 16px;
+                `;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `${containerId}-${clave}`;
+                label.textContent = `${formatearTextoFiltro(clave)} (${(valor || 0).toLocaleString()})`;
+                label.style.cssText = `
+                    margin: 0; 
+                    cursor: pointer; 
+                    flex: 1; 
+                    font-weight: normal; 
+                    font-size: 0.9rem; 
+                    text-align: left; 
+                    padding-left: 0;
+                `;
+                
+                checkboxItem.appendChild(checkbox);
+                checkboxItem.appendChild(label);
+                container.appendChild(checkboxItem);
+                elementosCreados++;
+            });
+            
+            showDebugInfo(`[FILTROS] ${containerId}: ${elementosCreados} elementos creados exitosamente`);
+        }
+
+        // Cargar estadísticas y filtros
+        async function cargarEstadisticasYFiltros() {
+            try {
+                showDebugInfo('[FILTROS] Iniciando carga de estadísticas y filtros...');
+                const response = await fetch(`${API_BASE}/estadisticas`);
+                if (!response.ok) {
+                    showDebugInfo(`[FILTROS] Error en respuesta: ${response.status} ${response.statusText}`);
+                    return;
+                }
+                
+                const stats = await response.json();
+                showDebugInfo('[FILTROS] Estadísticas recibidas:', stats);
+                
+                if (stats.filtros) {
+                    showDebugInfo('[FILTROS] Datos de filtros encontrados:', stats.filtros);
+                    
+                    // Poblar filtros de operaciones
+                    if (stats.filtros.operaciones) {
+                        showDebugInfo('[FILTROS] Poblando operaciones:', stats.filtros.operaciones);
+                        poblarCheckboxesConContadores('operaciones-container', stats.filtros.operaciones);
+                    }
+                    
+                    // Poblar filtros de ciudades
+                    if (stats.filtros.ciudades) {
+                        showDebugInfo('[FILTROS] Poblando ciudades:', stats.filtros.ciudades);
+                        poblarCheckboxesConContadores('ciudades-container', stats.filtros.ciudades);
+                    }
+                    
+                    // Poblar filtros de tipos
+                    if (stats.filtros.tipos) {
+                        showDebugInfo('[FILTROS] Poblando tipos:', stats.filtros.tipos);
+                        poblarCheckboxesConContadores('tipos-container', stats.filtros.tipos);
+                    }
+                    
+                    // Poblar filtros de amenidades
+                    if (stats.filtros.amenidades) {
+                        showDebugInfo('[FILTROS] Poblando amenidades:', stats.filtros.amenidades);
+                        poblarCheckboxesConContadores('amenidades-container', stats.filtros.amenidades);
+                    }
+                    
+                    // Poblar filtros de características SEPARADAS
+                    if (stats.filtros.caracteristicas) {
+                        showDebugInfo('[FILTROS] Poblando características separadas:', stats.filtros.caracteristicas);
+                        
+                        // Separar por tipo de característica
+                        const recamaras = {};
+                        const banos = {};
+                        const estacionamientos = {};
+                        
+                        Object.entries(stats.filtros.caracteristicas).forEach(([clave, valor]) => {
+                            if (clave.includes('Recámara')) {
+                                recamaras[clave] = valor;
+                            } else if (clave.includes('Baño')) {
+                                banos[clave] = valor;
+                            } else if (clave.includes('Estacionamiento')) {
+                                estacionamientos[clave] = valor;
+                            }
+                        });
+                        
+                        // Poblar contenedores separados
+                        if (Object.keys(recamaras).length > 0) {
+                            poblarCheckboxesConContadores('recamaras-container', recamaras);
+                        }
+                        if (Object.keys(banos).length > 0) {
+                            poblarCheckboxesConContadores('banos-container', banos);
+                        }
+                        if (Object.keys(estacionamientos).length > 0) {
+                            poblarCheckboxesConContadores('estacionamientos-container', estacionamientos);
+                        }
+                    }
+                    
+                    // Poblar filtros de documentación
+                    if (stats.filtros.documentacion) {
+                        showDebugInfo('[FILTROS] Poblando documentación:', stats.filtros.documentacion);
+                        poblarCheckboxesConContadores('documentacion-container', stats.filtros.documentacion);
+                    }
+                    
+                    // Poblar características adicionales
+                    if (stats.filtros.caracteristicas_adicionales && Object.keys(stats.filtros.caracteristicas_adicionales).length > 0) {
+                        showDebugInfo('[FILTROS] Poblando características adicionales:', stats.filtros.caracteristicas_adicionales);
+                        poblarCheckboxesConContadores('caracteristicas-adicionales-container', stats.filtros.caracteristicas_adicionales);
+                    }
+                } else {
+                    showDebugInfo('[FILTROS] No se encontraron datos de filtros en la respuesta');
+                }
+                
+                // Llenar filtros estáticos de recámaras, baños y estacionamientos
+                llenarFiltrosEstaticos();
+                
+                // Configurar event listeners
+                configurarEventListeners();
+                showDebugInfo('[FILTROS] Carga de filtros completada');
+                
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+                showDebugInfo('[FILTROS] Error:', error.message);
+            }
+        }
+
+        // Llenar filtros estáticos (recámaras, baños, estacionamientos)
+        function llenarFiltrosEstaticos() {
+            // Llenar recámaras
+            const recamarasContainer = document.getElementById('recamaras-container');
+            if (recamarasContainer) {
+                recamarasContainer.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const label = i === 5 ? '5+ Recámaras' : `${i} Recámara${i > 1 ? 's' : ''}`;
+                    const checkbox = crearCheckboxConContador(i.toString(), `recamaras-${i}`, label);
+                    recamarasContainer.appendChild(checkbox);
+                }
+            }
+            
+            // Llenar baños
+            const banosContainer = document.getElementById('banos-container');
+            if (banosContainer) {
+                banosContainer.innerHTML = '';
+                for (let i = 1; i <= 4; i++) {
+                    const label = i === 4 ? '4+ Baños' : `${i} Baño${i > 1 ? 's' : ''}`;
+                    const checkbox = crearCheckboxConContador(i.toString(), `banos-${i}`, label);
+                    banosContainer.appendChild(checkbox);
+                }
+            }
+            
+            // Llenar estacionamientos
+            const estacionamientosContainer = document.getElementById('estacionamientos-container');
+            if (estacionamientosContainer) {
+                estacionamientosContainer.innerHTML = '';
+                const estacionamientosOpciones = [
+                    {value: '0', label: 'Sin estacionamiento'},
+                    {value: '1', label: '1 Estacionamiento'},
+                    {value: '2', label: '2 Estacionamientos'},
+                    {value: '3', label: '3+ Estacionamientos'}
+                ];
+                estacionamientosOpciones.forEach(opcion => {
+                    const checkbox = crearCheckboxConContador(opcion.value, `estacionamientos-${opcion.value}`, opcion.label);
+                    estacionamientosContainer.appendChild(checkbox);
+                });
+            }
+        }
+
+        // Configurar event listeners
+        function configurarEventListeners() {
+            // Event listeners para campos de precio
+            ['precio_min', 'precio_max'].forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.addEventListener('change', aplicarFiltros);
+                }
+            });
+            
+            // Event listener para cambio de propiedades por página
+            const porPaginaElement = document.getElementById('por_pagina');
+            if (porPaginaElement) {
+                porPaginaElement.addEventListener('change', (e) => {
+                    propertiesPerPage = parseInt(e.target.value) || 24;
+                    currentPage = 1; // Resetear a primera página
+                    displayProperties();
+                });
+            }
+            
+            // Event listener para ordenamiento
+            const ordenSelect = document.getElementById('ordenar_precio');
+            if (ordenSelect) {
+                ordenSelect.addEventListener('change', aplicarFiltros);
+            }
+            
+            // Event listener para elementos por página
+            const porPaginaSelect = document.getElementById('por_pagina');
+            if (porPaginaSelect) {
+                porPaginaSelect.addEventListener('change', aplicarFiltros);
+            }
+            
+            // Event listener para búsqueda con debounce
+            const busquedaInput = document.getElementById('busqueda');
+            if (busquedaInput) {
+                let timeoutId;
+                busquedaInput.addEventListener('input', function() {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        aplicarFiltros();
+                    }, 500);
+                });
+            }
+        }
+
+        // Limpiar filtros
+        function limpiarFiltros() {
+            // Limpiar checkboxes
+            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Limpiar campos de texto y números
+            const camposALimpiar = ['busqueda', 'precio_min', 'precio_max'];
+            camposALimpiar.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) elemento.value = '';
+            });
+            
+            // Resetear select de ordenamiento
+            const ordenSelect = document.getElementById('ordenar_precio');
+            if (ordenSelect) ordenSelect.value = '';
+            
+            // Aplicar filtros (que ahora estarán vacíos)
+            
+            document.getElementById('recamaras_num').value = '';
+            document.getElementById('banos_num').value = '';
+            document.getElementById('estacionamientos_num').value = '';
+            document.getElementById('superficie_min').value = '';
+            document.getElementById('superficie_max').value = '';
+            
+            // Limpiar amenidades
+            document.querySelectorAll('input[name="amenidad"]').forEach(cb => cb.checked = false);
+aplicarFiltros();
+        }
+
         
-        const label = checkbox.parentElement;
-        const textoOriginal = amenidad.replace(/_/g, ' ');
-        label.textContent = `${textoOriginal} (${count})`;
-        label.insertBefore(checkbox, label.firstChild);
-      });
-
-      // Actualizar contadores de características
-      document.querySelectorAll('#filterCaracteristicas input[type="checkbox"]').forEach(checkbox => {
-        const caracteristica = checkbox.value;
-        const count = propiedades.filter(p => p.caracteristicas && p.caracteristicas[caracteristica] === true).length;
+        async function aplicarFiltros() {
+            try {
+                console.log('🔍 Aplicando filtros...');
+                
+                const busqueda = document.getElementById('busqueda')?.value || '';
+                const precioMin = document.getElementById('precio_min')?.value || '';
+                const precioMax = document.getElementById('precio_max')?.value || '';
+                const ordenPrecio = document.getElementById('ordenar_precio')?.value || '';
+                const superficieMin = document.getElementById('superficie_min')?.value || '';
+                const superficieMax = document.getElementById('superficie_max')?.value || '';
+                const porPagina = document.getElementById('por_pagina')?.value || '24';
+                
+                // Obtener filtros de checkboxes
+                const ciudadesSeleccionadas = obtenerCheckboxesSeleccionados('ciudades-container');
+                const tiposSeleccionados = obtenerCheckboxesSeleccionados('tipos-container');
+                const operacionesSeleccionadas = obtenerCheckboxesSeleccionados('operaciones-container');
+                const recamarasSeleccionadas = obtenerCheckboxesSeleccionados('recamaras-container');
+                const banosSeleccionados = obtenerCheckboxesSeleccionados('banos-container');
+                const estacionamientosSeleccionados = obtenerCheckboxesSeleccionados('estacionamientos-container');
+                const amenidadesSeleccionadas = obtenerCheckboxesSeleccionados('amenidades-container');
+                const documentacionSeleccionada = obtenerCheckboxesSeleccionados('documentacion-container');
+                const caracteristicasAdicionalesSeleccionadas = obtenerCheckboxesSeleccionados('caracteristicas-adicionales-container');
+                
+                // Construir parámetros de consulta
+                const params = new URLSearchParams();
+                params.append('pagina', '1');
+                params.append('por_pagina', porPagina);
+                
+                if (busqueda) params.append('q', busqueda);
+                if (precioMin) params.append('precio_min', precioMin);
+                if (precioMax) params.append('precio_max', precioMax);
+                if (superficieMin) params.append('superficie_min', superficieMin);
+                if (superficieMax) params.append('superficie_max', superficieMax);
+                if (ordenPrecio) params.append('orden', ordenPrecio === 'asc' ? 'precio' : '-precio');
+                
+                // Agregar filtros de checkboxes - CORREGIR PARÁMETROS
+                ciudadesSeleccionadas.forEach(ciudad => params.append('ciudad', ciudad));
+                tiposSeleccionados.forEach(tipo => params.append('tipo_propiedad', tipo));
+                operacionesSeleccionadas.forEach(op => params.append('tipo_operacion', op)); // CORREGIDO: operacion -> tipo_operacion
+                
+                // Para características, extraer números
+                recamarasSeleccionadas.forEach(rec => {
+                    const num = extraerNumero(rec);
+                    if (num) params.append('recamaras', num);
+                });
+                
+                banosSeleccionados.forEach(bano => {
+                    const num = extraerNumero(bano);
+                    if (num) params.append('banos', num);
+                });
+                
+                estacionamientosSeleccionados.forEach(est => {
+                    const num = extraerNumero(est);
+                    if (num) params.append('estacionamientos', num);
+                });
+                
+                // CORREGIR AMENIDADES - usar nombres correctos
+                amenidadesSeleccionadas.forEach(amenidad => {
+                    const amenidadLower = amenidad.toLowerCase();
+                    params.append('amenidad', amenidadLower);
+                });
+                
+                documentacionSeleccionada.forEach(doc => params.append('documentacion', doc));
+                
+                // AGREGAR CARACTERÍSTICAS ADICIONALES
+                caracteristicasAdicionalesSeleccionadas.forEach(ca => params.append('caracteristicas_adicionales', ca));
+                
+                console.log('📋 Parámetros de filtros:', params.toString());
+                
+                // Realizar consulta a la API
+                const response = await fetch(`${API_BASE}/propiedades?${params.toString()}`);
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Resultados filtrados:', data);
+                
+                // Actualizar propiedades filtradas
+                filteredProperties = data.propiedades || [];
+                currentPage = 1;
+                
+                // Actualizar visualización
+                displayProperties();
+                
+            } catch (error) {
+                console.error('Error aplicando filtros:', error);
+                mostrarNotificacion('Error aplicando filtros: ' + error.message, 'error');
+            }
+        }
         
-        const label = checkbox.parentElement;
-        const textoOriginal = caracteristica.replace(/_/g, ' ');
-        label.textContent = `${textoOriginal} (${count})`;
-        label.insertBefore(checkbox, label.firstChild);
-      });
-
-      // Actualizar contadores de ciudad
-      document.querySelectorAll('#filterCiudad input[type="checkbox"]').forEach(checkbox => {
-        const ciudad = checkbox.value;
-        const count = propiedades.filter(p => p.ubicacion?.ciudad === ciudad).length;
+        // Función auxiliar para obtener checkboxes seleccionados
+        function obtenerCheckboxesSeleccionados(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return [];
+            
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
         
-        const label = checkbox.parentElement;
-        label.textContent = `${ciudad} (${count})`;
-        label.insertBefore(checkbox, label.firstChild);
-      });
+        // Función auxiliar para extraer números de texto
+        function extraerNumero(texto) {
+            const match = texto.match(/[0-9]+/);
+            return match ? match[0] : null;
+        }
 
-      // Actualizar contadores de tipo de propiedad
-      document.querySelectorAll('#filterTipoPropiedad input[type="checkbox"]').forEach(checkbox => {
-        const tipo = checkbox.value;
-        const count = propiedades.filter(p => p.propiedad?.tipo_propiedad === tipo).length;
+        // Función para poblar checkboxes con contadores
+        function poblarCheckboxesConContadores(containerId, datos) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                showDebugInfo(`[FILTROS] Container ${containerId} no encontrado`);
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            // Si datos es un objeto con contadores
+            if (typeof datos === 'object' && !Array.isArray(datos)) {
+                Object.entries(datos).forEach(([key, count]) => {
+                    if (key && key !== 'undefined' && count > 0) {
+                        const checkbox = crearCheckboxConContador(key, key, `${key} (${count})`);
+                        container.appendChild(checkbox);
+                    }
+                });
+            }
+            // Si datos es un array simple
+            else if (Array.isArray(datos)) {
+                datos.forEach(item => {
+                    if (item && item !== 'undefined') {
+                        const checkbox = crearCheckboxConContador(item, item, item);
+                        container.appendChild(checkbox);
+                    }
+                });
+            }
+        }
+
+        // Función para crear checkbox con contador
+        function crearCheckboxConContador(value, id, label) {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `filter-${id}`;
+            checkbox.value = value;
+            checkbox.addEventListener('change', aplicarFiltros);
+            
+            const labelElement = document.createElement('label');
+            labelElement.htmlFor = checkbox.id;
+            labelElement.textContent = label;
+            labelElement.className = 'checkbox-label';
+            
+            div.appendChild(checkbox);
+            div.appendChild(labelElement);
+            
+            return div;
+        }
+
         
-        const label = checkbox.parentElement;
-        label.textContent = `${tipo} (${count})`;
-        label.insertBefore(checkbox, label.firstChild);
-      });
-    }
 
-    // Función para determinar el tipo de operación
-    function determinarTipoOperacion(propiedad) {
-      // Usar el tipo de operación definido en la propiedad
-      const tipoOperacion = propiedad.propiedad?.tipo_operacion;
-      
-      // Si tiene un tipo de operación definido, usarlo
-      if (tipoOperacion) {
-        return tipoOperacion.charAt(0).toUpperCase() + tipoOperacion.slice(1).toLowerCase();
-      }
-      
-      // Si no tiene tipo de operación definido, retornar vacío
-      return '';
-    }
+        function limpiarFiltros() {
+            // Limpiar inputs de texto y números
+            const inputs = ['busqueda', 'precio_min', 'precio_max', 'superficie_min', 'superficie_max'];
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.value = '';
+            });
+            
+            // Limpiar select de ordenamiento
+            const ordenSelect = document.getElementById('ordenar_precio');
+            if (ordenSelect) ordenSelect.value = '';
+            
+            // Limpiar todos los checkboxes
+            const containers = [
+                'operaciones-container', 'ciudades-container', 'tipos-container',
+                'recamaras-container', 'banos-container', 'estacionamientos-container',
+                'amenidades-container', 'caracteristicas-container', 'documentacion-container'
+            ];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => cb.checked = false);
+                }
+            });
+            
+            showDebugInfo('[FILTROS] Filtros limpiados');
+            
+            // Aplicar filtros (que ahora estarán vacíos, mostrando todas las propiedades)
+            aplicarFiltros();
+        }
 
-    // Función para formatear el precio según el tipo de operación
-    function formatearPrecio(precioData, tipoOperacion) {
-      if (!precioData) return 'Precio no disponible';
-      
-      const valor = extraerValorPrecio(precioData);
-      if (!valor) return 'Precio no disponible';
-      
-      const formatoBase = new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'MXN',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(valor);
-      
-      // Agregar "/mes" si es renta
-      return tipoOperacion?.toLowerCase() === 'renta' ? `${formatoBase}/mes` : formatoBase;
-    }
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+            const paginationDiv = document.getElementById('pagination');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const pageInfo = document.getElementById('page-info');
 
-    // Cargar datos al iniciar
-    window.addEventListener('DOMContentLoaded', cargarDatos);
-  </script>
+            if (totalPages <= 1) {
+                paginationDiv.style.display = 'none';
+                return;
+            }
+
+            paginationDiv.style.display = 'block';
+            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+            
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        function cambiarPagina(direction) {
+            const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+            
+            if (direction === -1 && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 1 && currentPage < totalPages) {
+                currentPage++;
+            }
+            
+            displayProperties();
+        }
+
+        function updateResultsInfo() {
+            const total = filteredProperties.length;
+            const start = (currentPage - 1) * propertiesPerPage + 1;
+            const end = Math.min(currentPage * propertiesPerPage, total);
+            
+            document.getElementById('info-resultados').textContent = 
+                `Mostrando ${start}-${end} de ${total} propiedades`;
+            document.getElementById('mostrando').textContent = `${start}-${end} de ${total}`;
+            document.getElementById('pagina-actual').textContent = currentPage;
+        }
+
+        // Función para toggle de descripción
+        function toggleDescription(id) {
+            const desc = document.getElementById(`desc-${id}`);
+            const btn = document.getElementById(`btn-${id}`);
+            
+            if (desc.style.display === 'none') {
+                desc.style.display = 'block';
+                btn.textContent = '📄 Ocultar descripción';
+            } else {
+                desc.style.display = 'none';
+                btn.textContent = '📄 Ver descripción';
+            }
+        }
+
+        // Sistema de gestión de propiedades
+        let sistemaPropiedades = {
+            favoritos: JSON.parse(localStorage.getItem('favoritos') || '{}'),
+            carpetasFavoritos: JSON.parse(localStorage.getItem('carpetasFavoritos') || '["General", "Casa", "Departamento", "Terreno"]'),
+            noDisponibles: JSON.parse(localStorage.getItem('noDisponibles') || '[]'),
+            contactosVendedores: JSON.parse(localStorage.getItem('contactosVendedores') || '{}'),
+            anotaciones: JSON.parse(localStorage.getItem('anotaciones') || '{}')
+        };
+
+        // Función para mostrar modal
+        function mostrarModal(html) {
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'modal-overlay';
+            modalDiv.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.8); z-index: 1000; 
+                display: flex; justify-content: center; align-items: center;
+            `;
+            modalDiv.innerHTML = `<div style="background: white; border-radius: 10px; max-width: 500px; width: 90%;">${html}</div>`;
+            document.body.appendChild(modalDiv);
+        }
+
+        function cerrarModal() {
+            const modal = document.getElementById('modal-overlay');
+            if (modal) modal.remove();
+        }
+
+        // Función para mostrar notificaciones
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            console.log(`[${tipo.toUpperCase()}] ${mensaje}`);
+            // Crear elemento de notificación
+            const notificacion = document.createElement('div');
+            notificacion.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                font-weight: bold;
+                z-index: 10000;
+                max-width: 300px;
+                background-color: ${tipo === 'error' ? '#ef4444' : tipo === 'success' ? '#10b981' : '#3b82f6'};
+            `;
+            notificacion.textContent = mensaje;
+            
+            document.body.appendChild(notificacion);
+            
+            // Remover después de 3 segundos
+            setTimeout(() => {
+                if (notificacion.parentNode) {
+                    notificacion.parentNode.removeChild(notificacion);
+                }
+            }, 3000);
+        }
+
+        // Guardar en localStorage
+        function guardarEstadoLocal() {
+            localStorage.setItem('favoritos', JSON.stringify(sistemaPropiedades.favoritos));
+            localStorage.setItem('carpetasFavoritos', JSON.stringify(sistemaPropiedades.carpetasFavoritos));
+            localStorage.setItem('noDisponibles', JSON.stringify(sistemaPropiedades.noDisponibles));
+            localStorage.setItem('contactosVendedores', JSON.stringify(sistemaPropiedades.contactosVendedores));
+            localStorage.setItem('anotaciones', JSON.stringify(sistemaPropiedades.anotaciones));
+        }
+
+        // Agregar a favoritos
+        function agregarAFavoritos(propiedadId) {
+            const carpetas = sistemaPropiedades.carpetasFavoritos;
+            
+            const html = `
+                <div style="padding: 20px;">
+                    <h3>Agregar a Favoritos</h3>
+                    <label for="carpeta-favoritos">Seleccionar carpeta:</label>
+                    <select id="carpeta-favoritos" style="width: 100%; margin: 10px 0; padding: 8px;">
+                        ${carpetas.map(carpeta => `<option value="${carpeta}">${carpeta}</option>`).join('')}
+                    </select>
+                    
+                    <div style="margin: 15px 0;">
+                        <input type="text" id="nueva-carpeta" placeholder="O crear nueva carpeta..." style="width: 100%; padding: 8px; margin-top: 5px;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="confirmarAgregarFavorito('${propiedadId}')" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Agregar</button>
+                        <button onclick="cerrarModal()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Cancelar</button>
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+        }
+
+        function confirmarAgregarFavorito(propiedadId) {
+            const carpetaSelect = document.getElementById('carpeta-favoritos').value;
+            const nuevaCarpeta = document.getElementById('nueva-carpeta').value.trim();
+            
+            const carpeta = nuevaCarpeta || carpetaSelect;
+            
+            if (nuevaCarpeta && !sistemaPropiedades.carpetasFavoritos.includes(nuevaCarpeta)) {
+                sistemaPropiedades.carpetasFavoritos.push(nuevaCarpeta);
+            }
+            
+            if (!sistemaPropiedades.favoritos[carpeta]) {
+                sistemaPropiedades.favoritos[carpeta] = [];
+            }
+            
+            if (!sistemaPropiedades.favoritos[carpeta].includes(propiedadId)) {
+                sistemaPropiedades.favoritos[carpeta].push(propiedadId);
+                guardarEstadoLocal();
+                mostrarNotificacion(`Propiedad agregada a ${carpeta}`, 'success');
+            } else {
+                mostrarNotificacion('La propiedad ya está en esta carpeta', 'info');
+            }
+            
+            cerrarModal();
+        }
+
+        // Marcar como no disponible
+        function marcarNoDisponible(propiedadId) {
+            if (sistemaPropiedades.noDisponibles.includes(propiedadId)) {
+                mostrarNotificacion('Esta propiedad ya está marcada como no disponible', 'info');
+                return;
+            }
+            
+            const html = `
+                <div style="padding: 20px; text-align: center;">
+                    <h3 style="color: #f59e0b;">⚠️ Confirmar Acción</h3>
+                    <p>¿Estás seguro de que quieres marcar esta propiedad como <strong>NO DISPONIBLE</strong>?</p>
+                    <p style="font-size: 0.9rem; color: #6b7280;">Esta acción se puede deshacer más tarde.</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+                        <button onclick="confirmarNoDisponible('${propiedadId}')" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Marcar como No Disponible</button>
+                        <button onclick="cerrarModal()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Cancelar</button>
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+        }
+
+        function confirmarNoDisponible(propiedadId) {
+            sistemaPropiedades.noDisponibles.push(propiedadId);
+            guardarEstadoLocal();
+            mostrarNotificacion('Propiedad marcada como no disponible', 'info');
+            loadProperties();
+            cerrarModal();
+        }
+
+        // Eliminar propiedad
+        function eliminarPropiedad(propiedadId) {
+            const html = `
+                <div style="padding: 20px; text-align: center;">
+                    <h3 style="color: #ef4444;">🗑️ Eliminar del Repositorio</h3>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <p style="color: #dc2626; font-weight: 600;">⚠️ ATENCIÓN: Esta acción es IRREVERSIBLE</p>
+                        <p style="color: #7f1d1d; font-size: 0.9rem;">La propiedad <strong>${propiedadId}</strong> será eliminada permanentemente del repositorio.</p>
+                    </div>
+                    <p>¿Estás completamente seguro de que quieres proceder?</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+                        <button onclick="confirmarEliminacion('${propiedadId}')" style="background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: 600;">🗑️ SÍ, ELIMINAR PERMANENTEMENTE</button>
+                        <button onclick="cerrarModal()" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: 600;">❌ CANCELAR</button>
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+        }
+
+        function confirmarEliminacion(propiedadId) {
+            // Aquí iría la llamada a la API para eliminar
+            mostrarNotificacion('Funcionalidad de eliminación en desarrollo', 'info');
+            cerrarModal();
+        }
+
+        function mostrarContacto(propiedadId) {
+            const html = `
+                <div style="padding: 20px;">
+                    <h3>💼 Información de Contacto</h3>
+                    <div style="margin: 15px 0;">
+                        <label>👤 Nombre del contacto:</label>
+                        <input type="text" id="contacto-nombre" style="width: 100%; padding: 8px; margin: 5px 0;">
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <label>📱 Teléfono:</label>
+                        <input type="tel" id="contacto-telefono" style="width: 100%; padding: 8px; margin: 5px 0;">
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <label>💰 Comisión que comparte (%):</label>
+                        <input type="number" id="contacto-comision" min="0" max="100" style="width: 100%; padding: 8px; margin: 5px 0;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="guardarContacto('${propiedadId}')" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Guardar</button>
+                        <button onclick="cerrarModal()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Cancelar</button>
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+        }
+
+        function guardarContacto(propiedadId) {
+            const nombre = document.getElementById('contacto-nombre').value;
+            const telefono = document.getElementById('contacto-telefono').value;
+            const comision = document.getElementById('contacto-comision').value;
+            
+            sistemaPropiedades.contactosVendedores[propiedadId] = {
+                nombre,
+                telefono,
+                comision
+            };
+            
+            guardarEstadoLocal();
+            mostrarNotificacion('Información de contacto guardada', 'success');
+            cerrarModal();
+        }
+
+        // Función para enviar propiedad por WhatsApp
+        async function enviarPorWhatsApp(propiedadId) {
+            // Verificar si hay usuario logueado
+            const usuarioLogueado = sistemaColaborativo && sistemaColaborativo.usuario && sistemaColaborativo.usuario.nombre;
+            
+            let camposAsesor = '';
+            if (!usuarioLogueado) {
+                camposAsesor = `
+                    <div style="border-top: 2px solid #e5e7eb; margin: 20px 0; padding-top: 20px;">
+                        <h4 style="color: #374151; margin: 0 0 15px 0;">👤 Información del Asesor</h4>
+                        
+                        <div style="margin: 10px 0;">
+                            <label for="asesor-nombre" style="display: block; margin-bottom: 5px; font-weight: 600;">Nombre del Asesor:</label>
+                            <input type="text" 
+                                   id="asesor-nombre" 
+                                   placeholder="Tu nombre completo"
+                                   style="width: calc(100% - 16px); padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; font-family: system-ui;">
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <label for="asesor-telefono" style="display: block; margin-bottom: 5px; font-weight: 600;">Teléfono del Asesor:</label>
+                            <input type="tel" 
+                                   id="asesor-telefono" 
+                                   placeholder="5521234567890"
+                                   style="width: calc(100% - 16px); padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; font-family: system-ui;">
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <label for="asesor-mensaje" style="display: block; margin-bottom: 5px; font-weight: 600;">Mensaje Opcional:</label>
+                            <textarea id="asesor-mensaje" 
+                                      placeholder="Ej: Visita mis propiedades en: www.miagencia.com"
+                                      rows="2"
+                                      style="width: calc(100% - 16px); padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; resize: vertical; font-family: system-ui;"></textarea>
+                        </div>
+                    </div>
+                `;
+            } else {
+                camposAsesor = `
+                    <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 12px; margin: 15px 0;">
+                        <h4 style="margin: 0 0 8px 0; color: #047857;">👤 Enviado por:</h4>
+                        <p style="margin: 0; color: #065f46; font-weight: 600;">${sistemaColaborativo.usuario.nombre}</p>
+                        ${sistemaColaborativo.usuario.telefono ? `<p style="margin: 5px 0 0 0; color: #065f46;">📱 ${sistemaColaborativo.usuario.telefono}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            const html = `
+                <div style="padding: 20px; max-width: 500px;">
+                    <h3 style="color: #25d366; margin-top: 0;">📱 Enviar por WhatsApp</h3>
+                    <p>Introduce el número de WhatsApp donde enviar la propiedad:</p>
+                    
+                    <div style="margin: 15px 0;">
+                        <label for="numero-whatsapp" style="display: block; margin-bottom: 5px; font-weight: 600;">Número de WhatsApp:</label>
+                        <input type="tel" 
+                               id="numero-whatsapp" 
+                               placeholder="5521234567890 (incluir código de país)"
+                               style="width: calc(100% - 20px); padding: 10px; border: 2px solid #25d366; border-radius: 8px; font-size: 1rem; font-family: system-ui;"
+                               pattern="[0-9+\\-\\s]*">
+                        <small style="color: #6b7280; font-size: 0.85rem;">
+                            Ejemplo: +5521234567890 o 5521234567890
+                        </small>
+                    </div>
+                    
+                    ${camposAsesor}
+                    
+                    <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 12px; margin: 15px 0;">
+                        <h4 style="margin: 0 0 8px 0; color: #0c4a6e;">📤 Se enviará:</h4>
+                        <ul style="margin: 5px 0; padding-left: 20px; color: #1e40af;">
+                            <li>🖼️ Imagen de portada de la propiedad</li>
+                            <li>📝 Descripción completa y formateada</li>
+                            <li>💰 Precio y ubicación</li>
+                            <li>👤 Información del asesor que envía</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="confirmarEnvioWhatsApp('${propiedadId}')" 
+                                style="background: #25d366; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 0.9rem; font-family: system-ui;">
+                            📱 Enviar por WhatsApp
+                        </button>
+                        <button onclick="cerrarModal()" 
+                                style="background: #6b7280; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; flex: 1; font-size: 0.9rem; font-family: system-ui;">
+                            Cancelar
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 6px; font-size: 0.9rem;">
+                        <strong>💡 Tip:</strong> El mensaje incluirá tus datos como asesor de contacto.
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+            setTimeout(() => document.getElementById('numero-whatsapp').focus(), 100);
+        }
+
+        // Confirmar envío de WhatsApp
+        async function confirmarEnvioWhatsApp(propiedadId) {
+            const numeroInput = document.getElementById('numero-whatsapp');
+            let numero = numeroInput.value.trim();
+            
+            if (!numero) {
+                mostrarNotificacion('Por favor ingresa un número de WhatsApp', 'warning');
+                numeroInput.focus();
+                return;
+            }
+            
+            // Validar formato básico del número
+            numero = numero.replace(/\\s+/g, ''); // Quitar espacios
+            if (!numero.match(/^[\\+]?[0-9]{10,15}$/)) {
+                mostrarNotificacion('Formato de número inválido. Usa formato: +5521234567890', 'error');
+                numeroInput.focus();
+                return;
+            }
+            
+            // Asegurar formato con código de país
+            if (!numero.startsWith('+')) {
+                if (numero.startsWith('52')) {
+                    numero = `+${numero}`;
+                } else {
+                    numero = `+52${numero}`;
+                }
+            }
+            
+            // Preparar datos del asesor (solo si no hay usuario logueado)
+            let datosEnvio = {
+                propiedad_id: propiedadId,
+                numero_destino: numero
+            };
+            
+            const usuarioLogueado = sistemaColaborativo && sistemaColaborativo.usuario && sistemaColaborativo.usuario.nombre;
+            if (!usuarioLogueado) {
+                const asesorNombre = document.getElementById('asesor-nombre')?.value.trim();
+                const asesorTelefono = document.getElementById('asesor-telefono')?.value.trim();
+                const asesorMensaje = document.getElementById('asesor-mensaje')?.value.trim();
+                
+                if (!asesorNombre) {
+                    mostrarNotificacion('Por favor ingresa tu nombre como asesor', 'warning');
+                    document.getElementById('asesor-nombre').focus();
+                    return;
+                }
+                
+                datosEnvio.asesor_nombre = asesorNombre;
+                datosEnvio.asesor_telefono = asesorTelefono;
+                datosEnvio.asesor_mensaje = asesorMensaje;
+            }
+            
+            try {
+                mostrarNotificacion('📱 Enviando por WhatsApp...', 'info');
+                cerrarModal();
+                
+                // Preparar headers incluyendo token si está disponible
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (sistemaColaborativo && sistemaColaborativo.token) {
+                    headers['Authorization'] = `Bearer ${sistemaColaborativo.token}`;
+                }
+                
+                const response = await fetch(`${API_BASE}/whatsapp/enviar-propiedad`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(datosEnvio)
+                });
+                
+                const resultado = await response.json();
+                
+                if (resultado.success) {
+                    let mensaje = `✅ Propiedad enviada exitosamente a ${numero}`;
+                    if (resultado.asesor_incluido) {
+                        mensaje += ' con tus datos de contacto';
+                    }
+                    mostrarNotificacion(mensaje, 'success');
+                    
+                    if (resultado.resultado && resultado.resultado.simulation) {
+                        setTimeout(() => {
+                            mostrarNotificacion('⚠️ Modo simulación: WhatsApp API no configurada', 'warning');
+                        }, 2000);
+                    }
+                } else {
+                    mostrarNotificacion(`❌ Error: ${resultado.error}`, 'error');
+                }
+                
+            } catch (error) {
+                // Fallback: usar método simple si el API no responde
+                mostrarNotificacion('📱 Usando método simple de WhatsApp...', 'info');
+                
+                const property = allProperties.find(p => p.id === propiedadId);
+                if (property) {
+                    let mensaje = `Hola, me interesa esta propiedad:\\n\\n${property.titulo}\\n💰 ${formatPrice(property.precio)}\\n📍 ${getLocation(property)}`;
+                    
+                    // Agregar datos del asesor si los ingresó
+                    const asesorNombre = document.getElementById('asesor-nombre')?.value.trim();
+                    const asesorTelefono = document.getElementById('asesor-telefono')?.value.trim();
+                    
+                    if (asesorNombre) {
+                        mensaje += `\\n\\n👤 Asesor: ${asesorNombre}`;
+                        if (asesorTelefono) mensaje += `\\n📱 Tel: ${asesorTelefono}`;
+                    }
+                    
+                    const url = `https://wa.me/${numero.replace('+', '')}?text=${encodeURIComponent(mensaje)}`;
+                    window.open(url, '_blank');
+                    mostrarNotificacion('✅ WhatsApp abierto - completa el envío manualmente', 'success');
+                }
+            }
+        }
+
+        function verFavoritos() {
+            const html = `
+                <div style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+                    <h3>⭐ Mis Favoritos</h3>
+                    ${Object.keys(sistemaPropiedades.favoritos).map(carpeta => `
+                        <div style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <h4>${carpeta} (${sistemaPropiedades.favoritos[carpeta].length})</h4>
+                            ${sistemaPropiedades.favoritos[carpeta].map(id => `<p style="margin: 5px 0;">- Propiedad ${id}</p>`).join('')}
+                        </div>
+                    `).join('')}
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button onclick="cerrarModal()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Cerrar</button>
+                    </div>
+                </div>
+            `;
+            
+            mostrarModal(html);
+        }
+
+        // Funciones para compatibilidad con modales existentes
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const color = tipo === 'success' ? '#10b981' : tipo === 'error' ? '#ef4444' : '#3b82f6';
+            const notif = document.createElement('div');
+            notif.style.cssText = `
+                position: fixed; top: 80px; right: 20px; z-index: 9999;
+                background: ${color}; color: white; padding: 15px 20px;
+                border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                max-width: 350px; word-wrap: break-word;
+            `;
+            notif.textContent = mensaje;
+            document.body.appendChild(notif);
+            
+            setTimeout(() => notif.remove(), 4000);
+        }
+
+        // Inicializar cuando cargue la página
+        // ============================================================================
+        // SISTEMA COLABORATIVO COMPLETO
+        // ============================================================================
+        
+        class SistemaColaborativo {
+            constructor() {
+                this.token = localStorage.getItem('token_colaborativo');
+                this.usuario = null;
+                this.favoritos = JSON.parse(localStorage.getItem('favoritos') || '{}');
+                this.carpetasFavoritos = JSON.parse(localStorage.getItem('carpetasFavoritos') || '["General", "Casa", "Departamento", "Terreno"]');
+                this.noDisponibles = JSON.parse(localStorage.getItem('noDisponibles') || '[]');
+                this.contactosVendedores = JSON.parse(localStorage.getItem('contactosVendedores') || '{}');
+                
+                if (this.token) {
+                    this.cargarDatosUsuario();
+                } else {
+                    // Auto-mostrar login si no hay token después de 2 segundos
+                    setTimeout(() => this.mostrarLogin(), 2000);
+                }
+            }
+            
+            async cargarDatosUsuario() {
+                try {
+                    const response = await fetch('/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${this.token}` }
+                    });
+                    
+                    if (response.ok) {
+                        this.usuario = await response.json();
+                        this.mostrarInterfaceColaborativa();
+                    } else {
+                        this.logout();
+                    }
+                } catch (error) {
+                    console.error('Error cargando datos de usuario:', error);
+                }
+            }
+            
+            mostrarLogin() {
+                const loginHTML = `
+                    <div id="sistema-colaborativo-login" style="position: fixed; top: 20px; right: 20px; background: white; border: 2px solid #e5e7eb; border-radius: 15px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 999; width: 350px;">
+                        <h3 style="margin-top: 0; color: #1f2937; text-align: center;">🏢 Sistema Colaborativo</h3>
+                        
+                        <div id="login-tabs" style="display: flex; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                            <button onclick="sistemaColaborativo.mostrarTab('login')" id="tab-login" class="tab-activo" style="flex: 1; padding: 10px; border: none; background: #3b82f6; color: white; border-radius: 5px 0 0 0; cursor: pointer;">
+                                Iniciar Sesión
+                            </button>
+                            <button onclick="sistemaColaborativo.mostrarTab('registro')" id="tab-registro" style="flex: 1; padding: 10px; border: none; background: #f3f4f6; color: #6b7280; border-radius: 0 5px 0 0; cursor: pointer;">
+                                Registrarse
+                            </button>
+                        </div>
+                        
+                        <div id="form-login" style="display: block;">
+                            <form id="login-form" style="display: grid; gap: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📧 Email</label>
+                                    <input type="email" id="colaborativo-login-email" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔒 Contraseña</label>
+                                    <input type="password" id="colaborativo-login-password" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                </div>
+                                <button type="submit" style="background: #10b981; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                    🚀 Iniciar Sesión
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div id="form-registro" style="display: none;">
+                            <form id="registro-form" style="display: grid; gap: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">👤 Nombre completo</label>
+                                    <input type="text" id="colaborativo-registro-nombre" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📧 Email</label>
+                                    <input type="email" id="colaborativo-registro-email" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">📱 Teléfono</label>
+                                    <input type="tel" id="colaborativo-registro-telefono" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔒 Contraseña</label>
+                                    <input type="password" id="colaborativo-registro-password" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                </div>
+                                <button type="submit" style="background: #8b5cf6; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                    ✨ Crear Cuenta
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <button onclick="sistemaColaborativo.cerrarLogin()" style="position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 14px;">
+                            ✕
+                        </button>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', loginHTML);
+                
+                // Event listeners para los formularios
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.procesarLogin();
+                });
+                
+                document.getElementById('registro-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.procesarRegistro();
+                });
+            }
+            
+            mostrarTab(tab) {
+                const tabLogin = document.getElementById('tab-login');
+                const tabRegistro = document.getElementById('tab-registro');
+                const formLogin = document.getElementById('form-login');
+                const formRegistro = document.getElementById('form-registro');
+                
+                if (tab === 'login') {
+                    tabLogin.style.background = '#3b82f6';
+                    tabLogin.style.color = 'white';
+                    tabRegistro.style.background = '#f3f4f6';
+                    tabRegistro.style.color = '#6b7280';
+                    formLogin.style.display = 'block';
+                    formRegistro.style.display = 'none';
+                } else {
+                    tabRegistro.style.background = '#8b5cf6';
+                    tabRegistro.style.color = 'white';
+                    tabLogin.style.background = '#f3f4f6';
+                    tabLogin.style.color = '#6b7280';
+                    formRegistro.style.display = 'block';
+                    formLogin.style.display = 'none';
+                }
+            }
+            
+            async procesarLogin() {
+                const email = document.getElementById('colaborativo-login-email').value;
+                const password = document.getElementById('colaborativo-login-password').value;
+                
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        this.token = data.token;
+                        this.usuario = data.usuario;
+                        localStorage.setItem('token_colaborativo', this.token);
+                        
+                        this.cerrarLogin();
+                        this.mostrarInterfaceColaborativa();
+                        
+                        this.mostrarNotificacion('🎉 ¡Bienvenido de vuelta!', 'success');
+                    } else {
+                        this.mostrarNotificacion(data.error || 'Error de autenticación', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error en login:', error);
+                    this.mostrarNotificacion('Error de conexión', 'error');
+                }
+            }
+            
+            async procesarRegistro() {
+                const datos = {
+                    nombre: document.getElementById('colaborativo-registro-nombre').value,
+                    email: document.getElementById('colaborativo-registro-email').value,
+                    telefono: document.getElementById('colaborativo-registro-telefono').value,
+                    password: document.getElementById('colaborativo-registro-password').value
+                };
+                
+                try {
+                    const response = await fetch('/api/auth/registro', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datos)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        this.mostrarNotificacion('✅ Cuenta creada exitosamente. Ahora puedes iniciar sesión.', 'success');
+                        this.mostrarTab('login');
+                        document.getElementById('colaborativo-login-email').value = datos.email;
+                    } else {
+                        this.mostrarNotificacion(data.error || 'Error al crear cuenta', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error en registro:', error);
+                    this.mostrarNotificacion('Error de conexión', 'error');
+                }
+            }
+            
+            cerrarLogin() {
+                const loginDiv = document.getElementById('sistema-colaborativo-login');
+                if (loginDiv) loginDiv.remove();
+            }
+            
+            reabrirLogin() {
+                const loginDiv = document.getElementById('sistema-colaborativo-login');
+                if (loginDiv) loginDiv.remove();
+                
+                const interfaceDiv = document.getElementById('interface-colaborativa');
+                if (interfaceDiv) interfaceDiv.remove();
+                
+                this.mostrarLogin();
+            }
+            
+            mostrarNotificacion(mensaje, tipo = 'info') {
+                const color = tipo === 'success' ? '#10b981' : tipo === 'error' ? '#ef4444' : '#3b82f6';
+                const notif = document.createElement('div');
+                notif.style.cssText = `
+                    position: fixed; top: 80px; right: 20px; z-index: 9999;
+                    background: ${color}; color: white; padding: 15px 20px;
+                    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    max-width: 350px; word-wrap: break-word;
+                `;
+                notif.textContent = mensaje;
+                document.body.appendChild(notif);
+                
+                setTimeout(() => notif.remove(), 4000);
+            }
+            
+            logout() {
+                this.token = null;
+                this.usuario = null;
+                localStorage.removeItem('token_colaborativo');
+                
+                const interfaceDiv = document.getElementById('interface-colaborativa');
+                if (interfaceDiv) interfaceDiv.remove();
+                
+                this.mostrarNotificacion('👋 Sesión cerrada', 'info');
+                setTimeout(() => this.mostrarLogin(), 1000);
+            }
+            
+            mostrarInterfaceColaborativa() {
+                const loginDiv = document.getElementById('sistema-colaborativo-login');
+                if (loginDiv) loginDiv.remove();
+                
+                const interfaceHTML = `
+                    <div id="interface-colaborativa" style="position: fixed; top: 20px; right: 20px; background: white; border: 2px solid #e5e7eb; border-radius: 15px; padding: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 999; width: 300px; max-height: 500px; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">
+                            <h4 style="margin: 0; color: #1f2937;">👋 ${this.usuario.nombre}</h4>
+                            <button onclick="sistemaColaborativo.logout()" style="background: #ef4444; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 12px;">
+                                Salir
+                            </button>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <div style="background: #f3f4f6; padding: 10px; border-radius: 8px; font-size: 0.9rem;">
+                                <div><strong>📧 Email:</strong> ${this.usuario.email}</div>
+                                <div><strong>🎭 Rol:</strong> ${this.usuario.rol}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; gap: 10px;">
+                            <button onclick="verFavoritos()" style="background: #f59e0b; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                                ⭐ Mis Favoritos
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', interfaceHTML);
+            }
+        }
+        
+        // Inicializar sistema colaborativo
+        const sistemaColaborativo = new SistemaColaborativo();
+
+        document.addEventListener('DOMContentLoaded', loadProperties);
+    </script>
 </body>
-</html>
+</html> 
